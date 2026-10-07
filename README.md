@@ -4,7 +4,19 @@ En lokal webapp for å planlegge og bygge DJ-sets: musikkbibliotek med BPM, key 
 
 Alt lagres lokalt i nettleseren (IndexedDB). Ingen innlogging, ingen sky.
 
-## Kom i gang
+## Kjør på Render (ingen installasjon)
+
+Appen er en statisk side, så den kan ligge gratis på [Render](https://render.com). Repoet har en `render.yaml` som setter opp alt.
+
+1. Logg inn på Render og velg **New → Blueprint**.
+2. Velg repoet `dj-set-planner` (gi Render tilgang til det hvis det ikke vises).
+3. Trykk **Apply**. Etter et par minutter får du en adresse som `https://dj-set-planner.onrender.com`.
+
+Hver gang det pushes til `main`, bygger Render en ny versjon automatisk.
+
+> **Om data og personvern:** Render serverer bare selve appen. Låtene, setsene og notatene dine lagres i nettleseren på enheten din, ikke på Render. Andre som åpner adressen ser en tom app, ikke ditt bibliotek.
+
+## Kjør lokalt
 
 Du trenger [Node.js](https://nodejs.org) 20 eller nyere.
 
@@ -17,7 +29,7 @@ npm run dev
 
 ### På mobilen
 
-`npm run dev` starter også serveren på det lokale nettverket. Åpne **Network**-adressen Vite skriver ut (f.eks. `http://192.168.1.20:5173`) på mobilen, på samme Wi-Fi.
+Enklest: åpne Render-adressen på mobilen. Lokalt starter `npm run dev` også serveren på det lokale nettverket; åpne **Network**-adressen Vite skriver ut (f.eks. `http://192.168.1.20:5173`) på mobilen, på samme Wi-Fi.
 
 > **Merk:** Dataene ligger i nettleseren *på hver enhet*. Biblioteket på mobilen er et annet enn det på PC-en. Bruk **Data → Last ned backup** på den ene enheten og **Importer backup** på den andre for å flytte det.
 
