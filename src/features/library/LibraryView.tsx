@@ -12,8 +12,11 @@ import { FilterPanel } from './FilterPanel';
 import { COLUMNS, DEFAULT_VISIBLE, TrackTable } from './TrackTable';
 import { TrackEditor } from './TrackEditor';
 import { SAMPLE_TRACKS } from './sampleData';
+import { ImportDialog } from '../import/ImportDialog';
+import { startBulkLookup, useBulkLookup } from '../../sources/bulkStore';
+import { useSettings } from '../../lib/settings';
 
-export function LibraryView() {
+export function LibraryView({ onOpenSettings }: { onOpenSettings: () => void }) {
   const tracks = useLiveQuery(() => db.tracks.toArray(), []);
   const [filter, setFilter] = useLocalStorage<LibraryFilter>('library.filter', emptyFilter);
   const [sort, setSort] = useLocalStorage<SortSpec>('library.sort', { column: 'artist', dir: 'asc' });
@@ -25,6 +28,9 @@ export function LibraryView() {
   const [confirmDelete, setConfirmDelete] = useState<string[] | null>(null);
   const [bulkTag, setBulkTag] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const bulk = useBulkLookup();
+  const [settings] = useSettings();
 
   const deferredFilter = useDeferredValue(filter);
   const all = tracks ?? [];
@@ -33,6 +39,7 @@ export function LibraryView() {
   const shown = useMemo(() => sortTracks(filterTracks(all, deferredFilter, dupCounts), sort), [all, deferredFilter, dupCounts, sort]);
   const dupTotal = useMemo(() => [...dupCounts.values()].filter((n) => n > 1).reduce((a, b) => a + b, 0), [dupCounts]);
   const wishlistCount = useMemo(() => all.filter((t) => t.status === 'wishlist').length, [all]);
+  const missingIds = useMemo(() => all.filter((t) => (t.bpm == null || t.camelot == null) && !t.online).map((t) => t.id), [all]);
 
   const byDupKey = useMemo(() => {
     const m = new Map<string, Track[]>();
@@ -58,6 +65,7 @@ export function LibraryView() {
     () => ({
       '/': () => searchRef.current?.focus(),
       n: () => setEditing(null),
+      i: () => setImportOpen(true),
       f: () => setShowFilters((v) => !v),
       Escape: () => {
         if (document.activeElement === searchRef.current) searchRef.current?.blur();
@@ -66,7 +74,7 @@ export function LibraryView() {
     }),
     [setShowFilters],
   );
-  useHotkeys(hotkeys, editing === undefined && !confirmDelete);
+  useHotkeys(hotkeys, editing === undefined && !confirmDelete && !importOpen);
 
   async function bulkUpdate(fn: (t: Track) => Partial<Track>) {
     const now = new Date().toISOString();
@@ -102,6 +110,9 @@ export function LibraryView() {
         <Button className="hidden md:inline-flex" onClick={() => setShowColumns(true)}>
           Kolonner
         </Button>
+        <Button onClick={() => setImportOpen(true)}>
+          Importer <kbd className="hidden text-xs opacity-50 lg:inline">I</kbd>
+        </Button>
         <Button variant="primary" onClick={() => setEditing(null)}>
           + Ny låt <kbd className="hidden text-xs opacity-60 lg:inline">N</kbd>
         </Button>
@@ -113,7 +124,21 @@ export function LibraryView() {
         <span>
           Viser <strong className="text-slate-200">{shown.length}</strong> av {all.length} låter
         </span>
-        {wishlistCount > 0 && <span>☆ {wishlistCount} på ønskelisten</span>}
+        {wishlistCount > 0 && (
+          <button type="button" className="hover:text-slate-200 hover:underline" onClick={() => setFilter({ ...filter, status: filter.status === 'wishlist' ? 'all' : 'wishlist' })}>
+            ⬇ {wishlistCount} må skaffes
+          </button>
+        )}
+        {missingIds.length > 0 && !bulk.running && (
+          <button type="button" className="text-sky-300 hover:underline" onClick={() => startBulkLookup(missingIds)}>
+            🌐 {missingIds.length} mangler BPM/key — hent fra nett
+          </button>
+        )}
+        {!settings.getSongBpmKey && all.length > 0 && (
+          <button type="button" className="text-amber-300 hover:underline" onClick={onOpenSettings}>
+            ⚙ Legg inn GetSongBPM-nøkkel for key-data
+          </button>
+        )}
         {dupTotal > 0 && (
           <button type="button" className="text-amber-300 hover:underline" onClick={() => setFilter({ ...filter, onlyDuplicates: !filter.onlyDuplicates })}>
             ⚠ {dupTotal} mulige duplikater
@@ -124,8 +149,11 @@ export function LibraryView() {
       {selectedIds.length > 0 && (
         <div className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-accent/50 bg-panel2 p-2 shadow-lg">
           <span className="px-2 text-sm font-medium">{selectedIds.length} valgt</span>
-          <Button onClick={() => bulkUpdate(() => ({ status: 'owned' }))}>Marker som eid</Button>
-          <Button onClick={() => bulkUpdate(() => ({ status: 'wishlist' }))}>Til ønskeliste</Button>
+          <Button onClick={() => startBulkLookup(selectedIds)} disabled={bulk.running}>
+            🌐 Hent data fra nett
+          </Button>
+          <Button onClick={() => bulkUpdate(() => ({ status: 'owned' }))}>✓ Har filen</Button>
+          <Button onClick={() => bulkUpdate(() => ({ status: 'wishlist' }))}>⬇ Må skaffes</Button>
           <form
             className="flex gap-1"
             onSubmit={(e) => {
@@ -150,11 +178,12 @@ export function LibraryView() {
       {all.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-line px-6 py-16 text-center">
           <p className="text-lg">Biblioteket er tomt.</p>
-          <p className="max-w-md text-muted">Registrer låter manuelt nå. Import av lydfiler og spillelister (Rekordbox, Traktor, M3U, CSV) kommer i fase 2.</p>
+          <p className="max-w-md text-muted">Lim inn en liste med «Artist - Tittel», importer en Spotify-spilleliste (via Exportify-CSV), eller registrer låter én og én. BPM og key hentes fra nett.</p>
           <div className="flex flex-wrap justify-center gap-2">
-            <Button variant="primary" onClick={() => setEditing(null)}>
-              + Registrer første låt
+            <Button variant="primary" onClick={() => setImportOpen(true)}>
+              Importer liste / CSV
             </Button>
+            <Button onClick={() => setEditing(null)}>+ Registrer én låt</Button>
             <Button
               onClick={async () => {
                 for (const t of SAMPLE_TRACKS) await addTrack(t);
@@ -184,6 +213,8 @@ export function LibraryView() {
           dupCounts={dupCounts}
         />
       )}
+
+      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} existing={all} genres={values.genres} tags={values.tags} />
 
       <TrackEditor
         open={editing !== undefined}

@@ -43,12 +43,34 @@ Enklest: åpne Render-adressen på mobilen. Lokalt starter `npm run dev` også s
 | `npm run build` | Produksjonsbygg til `dist/` |
 | `npm run preview` | Server produksjonsbygget lokalt |
 
+## Slik får du inn låter (uten lydfiler)
+
+- **Lim inn en liste:** Importer → «Lim inn liste», én låt per linje: `Artist - Tittel (Remix)`.
+- **Fra Spotify:** eksporter spillelisten som CSV på [exportify.net](https://exportify.net) og importer filen. Har filen tempo, key og energi, tas de med.
+- **Enkeltvis:** «+ Ny låt», skriv artist og tittel og trykk «Hent data fra nett».
+
+Importerte låter får status **⬇ Må skaffes** — det blir handlelisten din. Marker dem som **✓ Har filen** når du har lastet dem ned.
+
+### Data fra nett
+
+| Kilde | Gir | Krever |
+|---|---|---|
+| [GetSongBPM](https://getsongbpm.com/api) | BPM og key | Gratis API-nøkkel — legg den inn under ⚙ Innstillinger |
+| Deezer | Lengde, år, label, iblant BPM | Ingenting |
+| MusicBrainz | Lengde, første utgivelsesår | Ingenting |
+
+- Sikre treff fyller inn tomme felter automatisk. Det du har skrevet inn selv, overskrives aldri.
+- Usikre treff (annen remix, uenighet om BPM, half/double time) merkes **sjekk** og må bekreftes i låtskjemaet.
+- Energi finnes ikke i noen gratis kilde, så den setter du selv (eller får fra Exportify hvis filen har den).
+- Kallene går via `/api/...` på samme domene (proxy i `render.yaml` og `vite.config.ts`) for å unngå CORS-problemer.
+
 ## Hurtigtaster
 
 | Tast | Handling |
 |---|---|
 | `/` | Søk i biblioteket |
 | `N` | Ny låt |
+| `I` | Importer liste/CSV |
 | `F` | Vis/skjul filtre |
 | `Esc` | Lukk dialog / fjern valg |
 | `Ctrl+Enter` | Lagre låt |
@@ -74,9 +96,11 @@ src/
 
 ## Status
 
+Planen er lagt om for å kunne planlegge et set uten lydfiler:
+
 - [x] **Fase 1:** Prosjektoppsett, database, bibliotek med manuell registrering, søk, filtrering, sortering, duplikatmerking, JSON-backup
-- [ ] **Fase 2:** Import (lydfiler med tagger, M3U/CSV, Rekordbox/Traktor) og automatisk BPM/key-analyse
-- [ ] **Fase 3:** Mix-motoren, set-byggeren og visualisering
+- [x] **Fase 2:** Import av innlimt liste og CSV (Exportify/TuneMyMusic/regneark), oppslag av BPM/key på nett (GetSongBPM, Deezer, MusicBrainz)
+- [ ] **Fase 3:** Mix-motoren, set-byggeren, visualisering og eksport (handleliste med kjøpslenker, tekst for Spotify, jukselapp)
 - [ ] **Fase 4:** Hull-markering og brolåt-forslag
-- [ ] **Fase 5:** Sjangerprofiler, anbefalinger og eksterne kilder
-- [ ] **Fase 6:** Eksport, forhåndslytting og resten av ekstrafunksjonene
+- [ ] **Fase 5:** Sjangerprofiler og anbefalinger
+- [ ] **Fase 6:** Lydfiler: import med tagger, BPM/key-analyse for å dobbeltsjekke verdiene, forhåndslytting, Rekordbox/Traktor

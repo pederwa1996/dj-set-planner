@@ -3,6 +3,7 @@ import type { Track } from '../../db/types';
 import { addTrack, emptyTrack, updateTrack } from '../../db/tracks';
 import { Button, EnergyPicker, Field, KeyInput, Modal, NumberInput, Stars, SuggestInput, TagInput } from '../../components/ui';
 import { formatDuration, parseDuration } from '../../lib/normalize';
+import { OnlineLookupPanel } from './OnlineLookupPanel';
 
 type Draft = Omit<Track, 'id' | 'dupKey' | 'createdAt' | 'updatedAt'>;
 
@@ -54,8 +55,6 @@ export function TrackEditor({
     try {
       const data: Draft = { ...d, durationSec: parseDuration(duration) };
       // Manuelt satt BPM/key markeres som manuelle
-      if (!track || track.bpm !== data.bpm) data.sources = { ...data.sources, bpm: 'manual' };
-      if (!track || track.camelot !== data.camelot) data.sources = { ...data.sources, camelot: 'manual' };
       if (track) await updateTrack(track.id, data);
       else await addTrack(data);
       if (addAnother) {
@@ -122,7 +121,7 @@ export function TrackEditor({
               onClick={() => set('status', s)}
               className={`min-h-11 flex-1 rounded-lg border text-sm font-medium ${d.status === s ? 'border-accent bg-accent/15 text-accent' : 'border-line bg-panel2 text-slate-300'}`}
             >
-              {s === 'owned' ? '✓ Jeg eier låten' : '☆ Ønskeliste'}
+              {s === 'owned' ? '✓ Har filen' : '⬇ Må skaffes'}
             </button>
           ))}
         </div>
@@ -138,6 +137,15 @@ export function TrackEditor({
             ⚠ Ser ut som en duplikat av: {dups.map((x) => `${x.artist} – ${x.title}${x.version ? ` (${x.version})` : ''}`).join('; ')}
           </p>
         )}
+        <div className="sm:col-span-6">
+          <OnlineLookupPanel
+            draft={d}
+            onApply={(ch) => {
+              setD((prev) => ({ ...prev, ...ch }));
+              if (ch.durationSec != null) setDuration(formatDuration(ch.durationSec));
+            }}
+          />
+        </div>
         <Field label="Remix / versjon" className="sm:col-span-2">
           <input className="input" placeholder="Original Mix" value={d.version} onChange={(e) => set('version', e.target.value)} />
         </Field>
@@ -152,14 +160,14 @@ export function TrackEditor({
         </Field>
 
         <Field label="BPM" className="sm:col-span-2" hint={d.analysis?.bpm ? `Analyse foreslår ${d.analysis.bpm}` : undefined}>
-          <NumberInput value={d.bpm} step="0.01" placeholder="128.00" onChange={(v) => set('bpm', v)} />
+          <NumberInput value={d.bpm} step="0.01" placeholder="128.00" onChange={(v) => setD((p) => ({ ...p, bpm: v, sources: { ...p.sources, bpm: 'manual' } }))} />
         </Field>
         <Field label="Key (Camelot ⇄ vanlig notasjon)" className="sm:col-span-4">
-          <KeyInput value={d.camelot} onChange={(v) => set('camelot', v)} />
+          <KeyInput value={d.camelot} onChange={(v) => setD((p) => ({ ...p, camelot: v, sources: { ...p.sources, camelot: 'manual' } }))} />
         </Field>
 
         <Field label={`Energi ${d.energy ?? '–'}/10`} className="sm:col-span-6">
-          <EnergyPicker value={d.energy} onChange={(v) => set('energy', v)} />
+          <EnergyPicker value={d.energy} onChange={(v) => setD((p) => ({ ...p, energy: v, sources: { ...p.sources, energy: 'manual' } }))} />
         </Field>
 
         <Field label="Sjanger" className="sm:col-span-2">

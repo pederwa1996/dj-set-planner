@@ -65,6 +65,17 @@ export async function addTrack(input: NewTrack, database: DjDatabase = defaultDb
   return track;
 }
 
+/** Legg til mange låter i én transaksjon. */
+export async function addTracks(inputs: NewTrack[], database: DjDatabase = defaultDb): Promise<Track[]> {
+  const now = new Date().toISOString();
+  const tracks: Track[] = inputs.map((input) => {
+    const base = sanitizeTrack({ ...emptyTrack(), ...input });
+    return { ...base, id: newId(), dupKey: makeDupKey(base.artist, base.title, base.version), createdAt: now, updatedAt: now };
+  });
+  await database.tracks.bulkAdd(tracks);
+  return tracks;
+}
+
 export async function updateTrack(id: string, changes: Partial<Track>, database: DjDatabase = defaultDb): Promise<void> {
   await database.transaction('rw', database.tracks, async () => {
     const existing = await database.tracks.get(id);

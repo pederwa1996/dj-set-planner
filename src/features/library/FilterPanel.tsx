@@ -96,11 +96,17 @@ export function FilterPanel({ filter, onChange, genres, tags }: { filter: Librar
       <section className="flex flex-wrap items-center gap-2 lg:col-span-2">
         {(['all', 'owned', 'wishlist'] as const).map((s) => (
           <Chip key={s} active={filter.status === s} onClick={() => set('status', s)}>
-            {s === 'all' ? 'Alle' : s === 'owned' ? 'Eier' : 'Ønskeliste'}
+            {s === 'all' ? 'Alle' : s === 'owned' ? '✓ Har filen' : '⬇ Må skaffes'}
           </Chip>
         ))}
         <Chip active={filter.onlyDuplicates} onClick={() => set('onlyDuplicates', !filter.onlyDuplicates)}>
           Bare duplikater
+        </Chip>
+        <Chip active={filter.needs === 'missing'} onClick={() => set('needs', filter.needs === 'missing' ? 'all' : 'missing')}>
+          Mangler BPM/key
+        </Chip>
+        <Chip active={filter.needs === 'check'} onClick={() => set('needs', filter.needs === 'check' ? 'all' : 'check')}>
+          Må sjekkes
         </Chip>
         <Button variant="ghost" className="ml-auto" onClick={() => onChange({ ...emptyFilter, query: filter.query })}>
           Nullstill filtre

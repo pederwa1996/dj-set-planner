@@ -18,6 +18,8 @@ export interface LibraryFilter {
   status: 'all' | TrackStatus;
   minRating: number;
   onlyDuplicates: boolean;
+  /** 'missing' = mangler BPM eller key, 'check' = usikkert/ikke funnet på nett */
+  needs: 'all' | 'missing' | 'check';
 }
 
 export const emptyFilter: LibraryFilter = {
@@ -34,6 +36,7 @@ export const emptyFilter: LibraryFilter = {
   status: 'all',
   minRating: 0,
   onlyDuplicates: false,
+  needs: 'all',
 };
 
 export function activeFilterCount(f: LibraryFilter): number {
@@ -46,6 +49,7 @@ export function activeFilterCount(f: LibraryFilter): number {
   if (f.status !== 'all') n++;
   if (f.minRating > 0) n++;
   if (f.onlyDuplicates) n++;
+  if (f.needs !== 'all') n++;
   return n;
 }
 
@@ -98,6 +102,12 @@ function haystack(t: Track): string {
   return h;
 }
 
+/** Nettoppslaget var usikkert eller fant ingenting, og du har ikke fylt inn selv */
+export function needsCheck(t: Track): boolean {
+  const st = t.online?.status;
+  return (st === 'uncertain' || st === 'notfound') && (t.bpm == null || t.camelot == null || st === 'uncertain');
+}
+
 export function bpmInRange(bpm: number, min: number | null, max: number | null, halfDouble: boolean): boolean {
   const lo = min ?? -Infinity;
   const hi = max ?? Infinity;
@@ -132,6 +142,8 @@ export function filterTracks(tracks: Track[], f: LibraryFilter, dupCounts?: Map<
     if (f.tags.length && !f.tags.every((tag) => t.tags.includes(tag))) return false;
     if (f.minRating > 0 && t.rating < f.minRating) return false;
     if (dups && (dups.get(t.dupKey) ?? 0) < 2) return false;
+    if (f.needs === 'missing' && t.bpm != null && t.camelot != null) return false;
+    if (f.needs === 'check' && !needsCheck(t)) return false;
     if (queryKey) {
       if (t.camelot !== queryKey && !haystack(t).includes(phrase)) return false;
     } else if (tokens.length) {

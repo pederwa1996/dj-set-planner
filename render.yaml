@@ -21,7 +21,11 @@ services:
       - path: /*
         name: Referrer-Policy
         value: no-referrer
+    # Proxy til musikk-API-ene (unngår CORS). Samme stier som i vite.config.ts.
     routes:
       - type: rewrite
-        source: /*
-        destination: /index.html
+        source: /api/getsongbpm/*
+        destination: https://api.getsong.co/*
+      - type: rewrite
+        source: /api/deezer/*
+        destination: https://api.deezer.com/*

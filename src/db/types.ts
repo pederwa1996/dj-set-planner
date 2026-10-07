@@ -1,5 +1,17 @@
 export type TrackStatus = 'owned' | 'wishlist';
-export type FieldSource = 'manual' | 'tag' | 'analysis' | 'import';
+export type FieldSource = 'manual' | 'tag' | 'analysis' | 'import' | 'online' | 'estimate';
+
+/** Resultat av oppslag på nett (GetSongBPM, Deezer, MusicBrainz) */
+export interface OnlineInfo {
+  at: string;
+  status: 'ok' | 'uncertain' | 'notfound' | 'error';
+  bpm: number | null;
+  camelot: string | null;
+  matched: string; // "Artist – Tittel (versjon)" slik kilden har den
+  confidence: number; // 0–1
+  sources: string[];
+  notes: string[];
+}
 
 export interface Track {
   id: string;
@@ -31,7 +43,9 @@ export interface Track {
   /** Forslag fra lydanalyse (fase 2). Overskriver aldri verdiene over. */
   analysis: { bpm: number | null; camelot: string | null; confidence: number | null } | null;
   /** Hvor BPM/key kom fra */
-  sources: { bpm?: FieldSource; camelot?: FieldSource };
+  sources: { bpm?: FieldSource; camelot?: FieldSource; energy?: FieldSource };
+  /** Siste oppslag på nett, hvis gjort */
+  online?: OnlineInfo | null;
 
   file: { name: string; size: number; hasAudio: boolean } | null;
 
