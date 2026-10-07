@@ -1,3 +1,5 @@
+import type { EnergyCurve } from '../engine/energy';
+
 export type TrackStatus = 'owned' | 'wishlist';
 export type FieldSource = 'manual' | 'tag' | 'analysis' | 'import' | 'online' | 'estimate';
 
@@ -57,3 +59,33 @@ export interface Track {
 
 export type NewTrack = Partial<Omit<Track, 'id' | 'dupKey' | 'createdAt' | 'updatedAt'>> &
   Pick<Track, 'artist' | 'title'>;
+
+export interface SetSlot {
+  trackId: string;
+  /** Låst til sin posisjon (første, siste eller fast plass) når rekkefølgen bygges */
+  locked: boolean;
+}
+
+export interface DjSet {
+  id: string;
+  name: string;
+  date: string | null; // YYYY-MM-DD
+  venue: string;
+  notes: string;
+  targetMinutes: number | null;
+  curve: EnergyCurve;
+  /** 'full' = hele låten minus miksing, 'fixed' = fast spilletid per låt */
+  playMode: 'full' | 'fixed';
+  fixedMinutes: number;
+  artistGap: number;
+  maxTempoPct: number;
+  /** Låter du vurderer (potten). Rekkefølgen bygges fra disse. */
+  poolIds: string[];
+  /** Selve settet, i rekkefølge */
+  slots: SetSlot[];
+  /** Notat per overgang, nøkkel "fraId>tilId" så notatet følger låtparet */
+  transitionNotes: Record<string, string>;
+  playedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

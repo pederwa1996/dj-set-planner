@@ -64,6 +64,27 @@ Importerte låter får status **⬇ Må skaffes** — det blir handlelisten din.
 - Energi finnes ikke i noen gratis kilde, så den setter du selv (eller får fra Exportify hvis filen har den).
 - Kallene går via `/api/...` på samme domene (proxy i `render.yaml` og `vite.config.ts`) for å unngå CORS-problemer.
 
+## Bygge et set
+
+1. **Sets → ＋ Nytt set.** Sett ønsket lengde (f.eks. 60 min) og velg energikurve — eller dra i punktene for å tegne din egen.
+2. **＋ Legg til låter** i potten (søk, filtrer på BPM/sjanger/status, «Legg til alle viste»).
+3. **⚡ Bygg rekkefølge.** Motoren gir tre forskjellige forslag; velg ett.
+4. Juster for hånd: dra rader (desktop) eller bruk ↑/↓, 🔒 lås låter til plassen sin (første/siste/fast plass) og bygg på nytt. **Ctrl+Z** angrer.
+5. Hver overgang får score, farge, ikon og forklaring (f.eks. «8A → 9A: +1 på hjulet · +2 BPM (1,6 %) · energi 6 → 7 — perfekt»). Røde/gule overganger har **🔎 Finn brolåt**.
+6. **⇩ Eksport:** handleliste med lenker til Beatport/Bandcamp/Traxsource/YouTube/Spotify, liste for Spotify (via TuneMyMusic/Soundiiz), CSV og jukselapp for utskrift/PDF.
+
+Mix-motoren ligger i `src/engine/` (ren TypeScript, enhetstestet):
+
+| Fil | Gjør |
+|---|---|
+| `camelot.ts` | Key ⇄ Camelot, harmonisk kompatibilitet (samme, ±1, relativ, diagonal, +2/+7 energiløft) |
+| `tempo.ts` | BPM-endring i prosent, half/double time (87 ↔ 174) |
+| `transition.ts` | Samlet overgangsscore (key 50 %, tempo 35 %, energi 15 %) med forklaring |
+| `energy.ts` | Energikurver (forhåndsvalg og egne punkter) |
+| `sequencer.ts` | Rekkefølge: beam search + lokal forbedring, låste posisjoner, ønsket lengde, artistavstand, alternativer |
+| `analysis.ts` | Starttider, hull, advarsler (samme artist, spilt nylig, manglende data), toppen av settet |
+| `bridge.ts` | Ideell brolåt og rangering av kandidater |
+
 ## Hurtigtaster
 
 | Tast | Handling |
@@ -74,6 +95,8 @@ Importerte låter får status **⬇ Må skaffes** — det blir handlelisten din.
 | `F` | Vis/skjul filtre |
 | `Esc` | Lukk dialog / fjern valg |
 | `Ctrl+Enter` | Lagre låt |
+| `A` / `B` / `E` | I et set: legg til låter / bygg rekkefølge / eksport |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | I et set: angre / gjør om |
 | `?` | Vis hurtigtastene |
 
 ## Søketips
@@ -86,10 +109,15 @@ Importerte låter får status **⬇ Må skaffes** — det blir handlelisten din.
 ```
 src/
   engine/          Mix-motoren: ren TypeScript uten React/DOM, fullt enhetstestet
-    camelot.ts       key ↔ Camelot-konvertering, harmonisk kompatibilitet
-  db/              Dexie/IndexedDB: skjema, låt-lagring, backup
+  db/              Dexie/IndexedDB: skjema, låter, sets, backup
+  importers/       Innlimt liste og CSV (Exportify, TuneMyMusic, regneark)
+  sources/         Oppslag på nett: GetSongBPM, Deezer, MusicBrainz (utbyttbare adaptere)
+  exporters/       Tekst, CSV og kjøpslenker for sets
   features/
     library/       Biblioteket: tabell, filtre, søk, sortering, redigering
+    import/        Importdialogen
+    sets/          Set-byggeren, grafer, Camelot-hjul, brolåter, eksport
+    settings/      Innstillinger, API-nøkkel og backup
   components/      Felles UI-komponenter
   lib/             Hjelpere (normalisering, duplikatnøkler, hooks)
 ```
@@ -100,7 +128,7 @@ Planen er lagt om for å kunne planlegge et set uten lydfiler:
 
 - [x] **Fase 1:** Prosjektoppsett, database, bibliotek med manuell registrering, søk, filtrering, sortering, duplikatmerking, JSON-backup
 - [x] **Fase 2:** Import av innlimt liste og CSV (Exportify/TuneMyMusic/regneark), oppslag av BPM/key på nett (GetSongBPM, Deezer, MusicBrainz)
-- [ ] **Fase 3:** Mix-motoren, set-byggeren, visualisering og eksport (handleliste med kjøpslenker, tekst for Spotify, jukselapp)
-- [ ] **Fase 4:** Hull-markering og brolåt-forslag
+- [x] **Fase 3:** Mix-motoren, set-byggeren, visualisering og eksport (handleliste med kjøpslenker, tekst for Spotify, jukselapp)
+- [x] **Fase 4:** Hull-markering og brolåt-forslag
 - [ ] **Fase 5:** Sjangerprofiler og anbefalinger
 - [ ] **Fase 6:** Lydfiler: import med tagger, BPM/key-analyse for å dobbeltsjekke verdiene, forhåndslytting, Rekordbox/Traktor

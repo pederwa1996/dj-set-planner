@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LibraryView } from './features/library/LibraryView';
 import { SettingsDialog } from './features/settings/SettingsDialog';
+import { SetsView } from './features/sets/SetsView';
+import { useLocalStorage } from './lib/useLocalStorage';
 import { Button, Modal } from './components/ui';
 import { requestPersistentStorage } from './db/db';
 import { useHotkeys } from './lib/useHotkeys';
@@ -9,13 +11,13 @@ import { cancelBulkLookup, dismissBulkLookup, useBulkLookup } from './sources/bu
 type Tab = 'library' | 'sets' | 'profiles' | 'recs';
 const TABS: { id: Tab; label: string; soon?: boolean }[] = [
   { id: 'library', label: 'Bibliotek' },
-  { id: 'sets', label: 'Sets', soon: true },
+  { id: 'sets', label: 'Sets' },
   { id: 'profiles', label: 'Sjangerprofiler', soon: true },
   { id: 'recs', label: 'Anbefalinger', soon: true },
 ];
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('library');
+  const [tab, setTab] = useLocalStorage<Tab>('app.tab', 'library');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -56,7 +58,10 @@ export default function App() {
         <BulkProgressBar />
       </header>
 
-      <main className="mx-auto w-full max-w-[1600px] flex-1 px-3 py-4 sm:px-6">{tab === 'library' && <LibraryView onOpenSettings={() => setSettingsOpen(true)} />}</main>
+      <main className="mx-auto w-full max-w-[1600px] flex-1 px-3 py-4 sm:px-6">
+        {tab === 'library' && <LibraryView onOpenSettings={() => setSettingsOpen(true)} />}
+        {tab === 'sets' && <SetsView />}
+      </main>
 
       <footer className="px-3 py-4 text-center text-xs text-muted sm:px-6">
         BPM- og key-data fra{' '}
@@ -77,6 +82,10 @@ export default function App() {
             ['F', 'Vis/skjul filtre'],
             ['Esc', 'Lukk dialog / fjern valg'],
             ['Ctrl+Enter', 'Lagre låt i skjemaet'],
+            ['A', 'Set: legg til låter'],
+            ['B', 'Set: bygg rekkefølge'],
+            ['E', 'Set: eksport'],
+            ['Ctrl+Z / Ctrl+Shift+Z', 'Set: angre / gjør om'],
             ['?', 'Denne oversikten'],
           ].map(([k, v]) => (
             <div key={k} className="contents">

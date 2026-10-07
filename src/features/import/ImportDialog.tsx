@@ -134,8 +134,8 @@ export function ImportDialog({ open, onClose, existing, genres, tags }: { open: 
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Status for importerte låter">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Status for importerte låter" group>
             <div className="flex gap-2">
               {(
                 [
@@ -152,7 +152,7 @@ export function ImportDialog({ open, onClose, existing, genres, tags }: { open: 
           <Field label="Sjanger (der filen ikke har en)">
             <SuggestInput value={genre} onChange={setGenre} suggestions={genres} placeholder="f.eks. Trance" />
           </Field>
-          <Field label="Legg til tagger" className="sm:col-span-2">
+          <Field label="Legg til tagger" className="sm:col-span-2" group>
             <TagInput value={extraTags} onChange={setExtraTags} suggestions={tags} />
           </Field>
         </div>

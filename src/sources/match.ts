@@ -25,7 +25,7 @@ export function similarity(a: string, b: string): number {
 
 /** Artistnavn kan være "A, B & C" — godta treff mot hvilken som helst del eller helheten. */
 function artistSimilarity(query: string, candidate: string): number {
-  const parts = (s: string) => s.split(/\s*(?:,|&|\band\b|\bx\b|\bvs\.?|\bfeat\.?|\bft\.?)\s*/i).filter(Boolean);
+  const parts = (s: string) => s.split(/\s*[,&]\s*|\s+(?:and|x|vs\.?|feat\.?|ft\.?|featuring|with)\s+/i).filter(Boolean);
   let best = similarity(query, candidate);
   for (const q of parts(query)) for (const c of parts(candidate)) best = Math.max(best, similarity(q, c) * 0.95);
   return best;

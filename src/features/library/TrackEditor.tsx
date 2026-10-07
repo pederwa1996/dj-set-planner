@@ -162,11 +162,11 @@ export function TrackEditor({
         <Field label="BPM" className="sm:col-span-2" hint={d.analysis?.bpm ? `Analyse foreslår ${d.analysis.bpm}` : undefined}>
           <NumberInput value={d.bpm} step="0.01" placeholder="128.00" onChange={(v) => setD((p) => ({ ...p, bpm: v, sources: { ...p.sources, bpm: 'manual' } }))} />
         </Field>
-        <Field label="Key (Camelot ⇄ vanlig notasjon)" className="sm:col-span-4">
+        <Field label="Key (Camelot ⇄ vanlig notasjon)" className="sm:col-span-4" group>
           <KeyInput value={d.camelot} onChange={(v) => setD((p) => ({ ...p, camelot: v, sources: { ...p.sources, camelot: 'manual' } }))} />
         </Field>
 
-        <Field label={`Energi ${d.energy ?? '–'}/10`} className="sm:col-span-6">
+        <Field label={`Energi ${d.energy ?? '–'}/10`} className="sm:col-span-6" group>
           <EnergyPicker value={d.energy} onChange={(v) => setD((p) => ({ ...p, energy: v, sources: { ...p.sources, energy: 'manual' } }))} />
         </Field>
 
@@ -180,7 +180,7 @@ export function TrackEditor({
           <SuggestInput value={d.mood} onChange={(v) => set('mood', v)} suggestions={suggestions.moods} placeholder="euforisk, mørk …" />
         </Field>
 
-        <Field label="Tagger" className="sm:col-span-6">
+        <Field label="Tagger" className="sm:col-span-6" group>
           <TagInput value={d.tags} onChange={(v) => set('tags', v)} suggestions={suggestions.tags} />
         </Field>
 
@@ -190,7 +190,7 @@ export function TrackEditor({
         <Field label="Outro (takter)" className="sm:col-span-1">
           <NumberInput value={d.outroBars} onChange={(v) => set('outroBars', v)} placeholder="32" />
         </Field>
-        <Field label="Min vurdering" className="sm:col-span-2">
+        <Field label="Min vurdering" className="sm:col-span-2" group>
           <Stars value={d.rating} onChange={(v) => set('rating', v)} />
         </Field>
         <Field label="Antall ganger spilt" className="sm:col-span-1">

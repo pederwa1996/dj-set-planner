@@ -1,13 +1,18 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Track } from './types';
+import type { DjSet, Track } from './types';
 
 export class DjDatabase extends Dexie {
   tracks!: EntityTable<Track, 'id'>;
+  sets!: EntityTable<DjSet, 'id'>;
 
   constructor(name = 'dj-set-planner') {
     super(name);
     this.version(1).stores({
       tracks: 'id, artist, title, bpm, camelot, energy, genre, status, dupKey, *tags, updatedAt',
+    });
+    this.version(2).stores({
+      tracks: 'id, artist, title, bpm, camelot, energy, genre, status, dupKey, *tags, updatedAt',
+      sets: 'id, name, date, updatedAt',
     });
   }
 }

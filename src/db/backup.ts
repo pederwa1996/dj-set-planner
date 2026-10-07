@@ -1,16 +1,16 @@
 import { db as defaultDb, type DjDatabase } from './db';
-import type { Track } from './types';
+import type { DjSet, Track } from './types';
 import { emptyTrack } from './tracks';
 import { makeDupKey } from '../lib/normalize';
 
 export const BACKUP_FORMAT = 'dj-set-planner-backup';
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 
 export interface Backup {
   format: typeof BACKUP_FORMAT;
   version: number;
   exportedAt: string;
-  tables: { tracks: Track[] };
+  tables: { tracks: Track[]; sets?: DjSet[] };
 }
 
 export async function createBackup(database: DjDatabase = defaultDb): Promise<Backup> {
@@ -18,7 +18,7 @@ export async function createBackup(database: DjDatabase = defaultDb): Promise<Ba
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    tables: { tracks: await database.tracks.toArray() },
+    tables: { tracks: await database.tracks.toArray(), sets: await database.sets.toArray() },
   };
 }
 
@@ -38,9 +38,14 @@ export async function restoreBackup(data: unknown, mode: 'replace' | 'merge', da
     full.dupKey = makeDupKey(full.artist, full.title, full.version);
     return full;
   });
-  await database.transaction('rw', database.tracks, async () => {
-    if (mode === 'replace') await database.tracks.clear();
+  const sets = Array.isArray(b.tables.sets) ? b.tables.sets : [];
+  await database.transaction('rw', database.tracks, database.sets, async () => {
+    if (mode === 'replace') {
+      await database.tracks.clear();
+      await database.sets.clear();
+    }
     await database.tracks.bulkPut(tracks);
+    await database.sets.bulkPut(sets);
   });
   return tracks.length;
 }

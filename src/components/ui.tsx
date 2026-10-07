@@ -41,20 +41,31 @@ export function Modal({ open, onClose, title, children, footer, wide }: { open: 
             ×
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
       </div>
     </div>
   );
 }
 
-export function Field({ label, children, hint, className = '' }: { label: string; children: ReactNode; hint?: ReactNode; className?: string }) {
-  return (
-    <label className={`flex flex-col gap-1 ${className}`}>
+/**
+ * Felt med etikett. Bruk `group` når innholdet er flere knapper/kontroller
+ * (da blir det en navngitt gruppe i stedet for en <label> rundt alt).
+ */
+export function Field({ label, children, hint, className = '', group }: { label: string; children: ReactNode; hint?: ReactNode; className?: string; group?: boolean }) {
+  const inner = (
+    <>
       <span className="text-xs font-medium uppercase tracking-wide text-muted">{label}</span>
       {children}
       {hint && <span className="text-xs text-muted">{hint}</span>}
-    </label>
+    </>
+  );
+  return group ? (
+    <div role="group" aria-label={label} className={`flex flex-col gap-1 ${className}`}>
+      {inner}
+    </div>
+  ) : (
+    <label className={`flex flex-col gap-1 ${className}`}>{inner}</label>
   );
 }
 

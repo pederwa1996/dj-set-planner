@@ -7,7 +7,7 @@ export function FilterPanel({ filter, onChange, genres, tags }: { filter: Librar
   const toggle = (arr: string[], v: string) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
   return (
-    <div className="grid gap-5 rounded-xl border border-line bg-panel p-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-5 rounded-xl border border-line bg-panel p-4 lg:grid-cols-2">
       <section className="flex flex-col gap-2">
         <h3 className="text-xs font-medium uppercase tracking-wide text-muted">BPM</h3>
         <div className="flex items-center gap-2">

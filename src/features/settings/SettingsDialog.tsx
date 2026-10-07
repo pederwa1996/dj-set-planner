@@ -70,7 +70,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               </Button>
             </div>
           </Field>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {sourceRow('getsongbpm', 'GetSongBPM', 'BPM og key. Krever nøkkel. Maks 3000 oppslag i timen.', settings.getSongBpmKey ? getSongBpmAdapter(settings.getSongBpmKey) : null)}
             {sourceRow('deezer', 'Deezer', 'Lengde, år, label, sjanger og noen ganger BPM. Ingen nøkkel.', deezerAdapter)}
             {sourceRow('musicbrainz', 'MusicBrainz', 'Lengde, første utgivelsesår og versjoner. Ingen nøkkel.', musicBrainzAdapter)}
