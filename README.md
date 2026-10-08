@@ -76,6 +76,7 @@ Confident matches fill in empty fields automatically; your own values are never 
    - **From a Spotify playlist:** export it at [exportify.net](https://exportify.net) and drag the CSV onto the **Sets** page (or click **From Exportify CSV**) — it becomes a new set named after the playlist. Inside a set, drag a CSV onto the page (or **Import CSV**) to add it. Choose “Let the engine order them” (into the pool) or “Keep playlist order”, and the set length. Tracks already in your library are reused, and BPM/key/energy from the file are kept.
 2. **Build order** — the engine returns three different options; pick one.
 3. Fine-tune: drag rows (desktop) or use ↑/↓, lock tracks to their position, rebuild around them. **Ctrl+Z** undoes.
+   - A track that doesn’t fit? Press **⇄ Swap** on its row. You see the tracks before and after it, what would fit best there, and replacements ranked by the new transitions in and out (with “▲ better” when they beat the current one): from the set’s reserve, from your library, or **Search the web** (artists similar to the ones around that spot). The swapped-out track stays in the reserve. **Remove from set** is there too (or the ✕ on the row).
 4. Every transition gets a score, an icon and an explanation, e.g. “8A → 9A: +1 on the wheel · +2 BPM (1.6%) · energy 6 → 7 — perfect”. Weak ones offer **Find bridge track**.
    - It first suggests tracks from your library (owned, then to-get).
    - **Search the web** looks outside your library: artists similar to the two tracks (Deezer), their popular tracks, BPM and key from GetSongBPM, ranked the same way. Play a 30-second preview, open it on Beatport/Spotify, then **Insert** it into the set or save it with **To get** (both add it to your library as “to get”, tagged `web find`). Keys need a GetSongBPM key in Settings.
@@ -105,7 +106,7 @@ Confident matches fill in empty fields automatically; your own values are never 
 | `energy.ts` | Energy curves (presets and custom points) |
 | `sequencer.ts` | Ordering: beam search + local improvement, locked positions, target length, artist spacing, alternatives |
 | `analysis.ts` | Start times, gaps, warnings (same artist, played recently, missing data), peak of the set |
-| `bridge.ts` | Ideal bridge track and ranking of candidates |
+| `bridge.ts` | Ideal bridge track, ranking of bridge candidates and of replacements for one position (no key clashes or big tempo jumps) |
 
 ## Project structure
 

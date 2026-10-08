@@ -1,7 +1,7 @@
 import { emptyTrack } from '../../db/tracks';
 import type { Track } from '../../db/types';
 import { makeDupKey } from '../../lib/normalize';
-import { discoverBridges, discoverForSet, setSeedArtists, suggestGenre, type DiscoverDeps } from '../discover';
+import { discoverBridges, discoverForSet, discoverReplacements, setSeedArtists, suggestGenre, type DiscoverDeps } from '../discover';
 
 const t = (p: Partial<Track>): Track => {
   const base = { ...emptyTrack(), artist: 'A', title: 'T', ...p };
@@ -153,5 +153,20 @@ describe('forslag til et set fra nettet', () => {
     expect(r.suggestions.every((s) => s.fit === null)).toBe(true);
     const none = await discoverForSet([], [], { mode: 'genre', genre: 'polka', deps: { ...genreDeps(), deezer: async <T,>() => ({ data: [] }) as T } });
     expect(none.notes.join()).toMatch(/No playlists found for “polka”/);
+  });
+});
+
+describe('bytte ut en låt med noe fra nettet', () => {
+  it('bruker artistene rundt plassen og rangerer etter overgangene', async () => {
+    const log: string[] = [];
+    const current = t({ artist: 'Paul van Dyk', title: 'Weak One', bpm: 120, camelot: '3B' });
+    const d: DiscoverDeps = { ...deps(log), deezer: async <T,>(path: string) => deps(log).deezer<T>(path.replace(/\/top\?limit=\d+$/, '/top?limit=4')) };
+    const r = await discoverReplacements(from, to, current, [from, to, current, owned], { deps: d });
+    expect(log.filter((p) => p.startsWith('/search/artist')).length).toBe(2); // Chicane og Paul van Dyk (én gang)
+    const titles = r.suggestions.map((s) => s.track.title);
+    expect(titles[0]).toBe('Out of the Blue');
+    expect(titles).not.toContain('Punk');
+    expect(titles).not.toContain('Blah Blah Blah');
+    expect(r.suggestions[0]).toMatchObject({ into: expect.any(Number), out: expect.any(Number) });
   });
 });

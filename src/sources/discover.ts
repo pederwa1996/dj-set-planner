@@ -1,5 +1,5 @@
 import type { Track } from '../db/types';
-import { findBridges } from '../engine/bridge';
+import { findBridges, findReplacements, type Replacement } from '../engine/bridge';
 import { scoreTransition, type TransitionOptions } from '../engine/transition';
 import type { MixTrack } from '../engine/types';
 import { primaryArtist } from '../engine/sequencer';
@@ -325,6 +325,31 @@ export async function discoverForSet(
   if (pool.length && !pool.some((c) => c.camelot)) notes.push(NO_KEYS);
   const unknown = pool.filter((c) => c.bpm == null && c.camelot == null).length;
   if (unknown && setTracks.length) notes.push(`${unknown} track${unknown === 1 ? '' : 's'} had no BPM or key online and ${unknown === 1 ? 'was' : 'were'} left out.`);
+  opts.onProgress?.({ phase: 'done', checked, total: pool.length });
+  return { suggestions, checked, notes };
+}
+
+/* ---------- Bytte ut én låt i settet ---------- */
+
+/**
+ * Låter på nettet som kan erstatte `current` mellom `prev` og `next`:
+ * populære låter fra artistene rundt (og den som byttes ut) og artister som ligner.
+ */
+export async function discoverReplacements(
+  prev: Track | null,
+  next: Track | null,
+  current: Track,
+  library: Track[],
+  opts: { deps?: DiscoverDeps; onProgress?: (p: DiscoverProgress) => void; signal?: AbortSignal; maxCandidates?: number; maxTempoPct?: number; targetEnergy?: number | null } = {},
+): Promise<{ suggestions: Replacement<WebTrack>[]; checked: number; notes: string[] }> {
+  const deps = opts.deps ?? defaultDeps();
+  const skip = skipSet(library);
+  const seeds = [prev?.artist, next?.artist, current.artist].filter((a): a is string => !!a);
+  const { candidates, notes } = await relatedCandidates(seeds, skip, deps, { ...opts, maxArtists: 10, perArtist: 4 });
+  const pool = candidates.slice(0, opts.maxCandidates ?? 32);
+  const checked = await analyseCandidates(pool, deps, opts);
+  const suggestions = findReplacements(prev, next, pool, { limit: 12, maxTempoPct: opts.maxTempoPct, targetEnergy: opts.targetEnergy });
+  if (pool.length && !pool.some((c) => c.camelot)) notes.push(NO_KEYS);
   opts.onProgress?.({ phase: 'done', checked, total: pool.length });
   return { suggestions, checked, notes };
 }

@@ -1,5 +1,5 @@
 import { analyzeSet } from '../analysis';
-import { findBridges, idealBridge } from '../bridge';
+import { findBridges, findReplacements, idealBridge, idealReplacement } from '../bridge';
 import { energyAt, presetCurve } from '../energy';
 import { buildSequences, primaryArtist } from '../sequencer';
 import { tempoCompatibility } from '../tempo';
@@ -166,5 +166,47 @@ describe('analyse og brolåter', () => {
     const res = findBridges(a, b, [bad, good]);
     expect(res[0].track.id).toBe(good.id);
     expect(res.find((x) => x.track.id === bad.id)).toBeUndefined();
+  });
+});
+
+describe('bytte ut en låt', () => {
+  const mk = (id: string, bpm: number | null, camelot: string | null, energy: number | null = null) => ({ id, artist: id, title: id, bpm, camelot, energy, durationSec: 360 });
+  const prev = mk('prev', 134, '8A', 6);
+  const next = mk('next', 136, '9A', 7);
+  const good = mk('good', 135, '8A', 7); // 8A → 8A → 9A
+  const better = mk('better', 135, '9A', 6); // 8A → 9A → 9A
+  const clash = mk('clash', 135, '3B', 6);
+  const slow = mk('slow', 118, '8A', 6);
+
+  it('rangerer etter begge overgangene og hopper over det som ikke passer', () => {
+    const r = findReplacements(prev, next, [clash, good, slow, better, prev, next]);
+    expect(r.map((x) => x.track.id)).toEqual(expect.arrayContaining(['good', 'better']));
+    expect(r.map((x) => x.track.id)).not.toContain('clash');
+    expect(r.map((x) => x.track.id)).not.toContain('slow');
+    expect(r.map((x) => x.track.id)).not.toContain('prev');
+    expect(r[0].into).not.toBeNull();
+    expect(r[0].score).toBe(Math.min(r[0].into!, r[0].out!));
+  });
+
+  it('først eller sist i settet: bare én nabo teller', () => {
+    const first = findReplacements(null, next, [good, clash]);
+    expect(first[0]).toMatchObject({ into: null });
+    expect(first[0].score).toBe(first[0].out);
+    const last = findReplacements(prev, null, [good]);
+    expect(last[0]).toMatchObject({ out: null });
+  });
+
+  it('energien teller når kurven gir et mål', () => {
+    const lowE = mk('lowE', 135, '8A', 2);
+    const highE = mk('highE', 135, '8A', 8);
+    const r = findReplacements(prev, next, [lowE, highE], { targetEnergy: 8 });
+    expect(r[0].track.id).toBe('highE');
+    expect(r[0].energyFit).toBe(100);
+  });
+
+  it('beskriver hva som trengs på plassen', () => {
+    expect(idealReplacement(prev, next, 7.4).description).toMatch(/~135 BPM, energy 7$/);
+    expect(idealReplacement(null, next, null).description).toMatch(/9A/);
+    expect(idealReplacement(null, null, null).description).toBe('not enough data to suggest');
   });
 });

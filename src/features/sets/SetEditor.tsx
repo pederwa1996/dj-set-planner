@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowDown, ArrowUp, CalendarDays, CheckCheck, ChevronRight, Download, FileSpreadsheet, GripVertical, Lock, LockOpen, MapPin, Plus, Redo2, Search, Settings2, Share, Sparkles, Undo2, Wand2, X } from 'lucide-react';
+import { ArrowDown, ArrowLeftRight, ArrowUp, CalendarDays, CheckCheck, ChevronRight, Download, FileSpreadsheet, GripVertical, Lock, LockOpen, MapPin, Plus, Redo2, Search, Settings2, Share, Sparkles, Undo2, Wand2, X } from 'lucide-react';
 import { db } from '../../db/db';
 import type { DjSet, SetSlot, Track } from '../../db/types';
 import { markSetPlayed, pairKey, playSecFor, saveSet } from '../../db/sets';
@@ -17,6 +17,7 @@ import { openTrack } from '../../lib/uiStore';
 import { collectValues } from '../library/filter';
 import { AlternativesDialog } from './AlternativesDialog';
 import { BridgeDialog } from './BridgeDialog';
+import { SwapDialog } from './SwapDialog';
 import { CurveEditor } from './CurveEditor';
 import { ExportDialog } from './ExportDialog';
 import { GRADE_STYLE } from './grade';
@@ -54,6 +55,7 @@ export function SetEditor({ setId }: { setId: string }) {
   const [computing, setComputing] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [bridgeAt, setBridgeAt] = useState<number | null>(null);
+  const [swapAt, setSwapAt] = useState<number | null>(null);
   const [energyFor, setEnergyFor] = useState<Track | null>(null);
   const [showSettings, setShowSettings] = useLocalStorage('set.showSettings.v2', false);
   const [noteOpen, setNoteOpen] = useState<string | null>(null);
@@ -217,6 +219,14 @@ export function SetEditor({ setId }: { setId: string }) {
     }, true);
   };
   const removeAt = (i: number) => update((s) => ({ ...s, slots: s.slots.filter((_, k) => k !== i) }), true);
+  // Bytt låten på plass i; den gamle blir liggende i reserven
+  const replaceAt = (i: number, id: string) =>
+    update((s) => {
+      const old = s.slots[i];
+      if (!old) return s;
+      const slots = s.slots.map((x, k) => (k === i ? { trackId: id, locked: x.locked } : x));
+      return { ...s, slots, poolIds: Array.from(new Set([...s.poolIds, old.trackId, id])) };
+    }, true);
   const toggleLock = (i: number) => update((s) => ({ ...s, slots: s.slots.map((x, k) => (k === i ? { ...x, locked: !x.locked } : x)) }), true);
   const append = (id: string) => update((s) => ({ ...s, slots: [...s.slots, { trackId: id, locked: false }] }), true);
   const insertAt = (i: number, id: string) =>
@@ -479,6 +489,9 @@ export function SetEditor({ setId }: { setId: string }) {
                         <IconButton label="Move down" onClick={() => move(i, i + 1)} disabled={i === slotTracks.length - 1}>
                           <ArrowDown size={16} />
                         </IconButton>
+                        <IconButton label="Swap for another track" onClick={() => setSwapAt(i)}>
+                          <ArrowLeftRight size={16} />
+                        </IconButton>
                         <IconButton label="Remove from set (stays in reserve)" onClick={() => removeAt(i)} className="hover:!text-[#f07a7a]">
                           <X size={16} />
                         </IconButton>
@@ -620,6 +633,24 @@ export function SetEditor({ setId }: { setId: string }) {
         onPick={(r) => {
           applyOrder(r.order);
           setAltOpen(false);
+        }}
+      />
+      <SwapDialog
+        open={swapAt != null}
+        onClose={() => setSwapAt(null)}
+        index={swapAt}
+        order={slotTracks}
+        library={allTracks}
+        poolIds={set.poolIds}
+        targetEnergy={swapAt != null ? (analysis.items[swapAt]?.targetEnergy ?? null) : null}
+        maxTempoPct={set.maxTempoPct}
+        onSwap={(id) => {
+          if (swapAt != null) replaceAt(swapAt, id);
+          setSwapAt(null);
+        }}
+        onRemove={() => {
+          if (swapAt != null) removeAt(swapAt);
+          setSwapAt(null);
         }}
       />
       <BridgeDialog
