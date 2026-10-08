@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowDown, ArrowUp, CalendarDays, CheckCheck, ChevronRight, Download, GripVertical, Lock, LockOpen, MapPin, Plus, Redo2, Search, Settings2, Share, Sparkles, Undo2, Wand2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarDays, CheckCheck, ChevronRight, Download, FileSpreadsheet, GripVertical, Lock, LockOpen, MapPin, Plus, Redo2, Search, Settings2, Share, Sparkles, Undo2, Wand2, X } from 'lucide-react';
 import { db } from '../../db/db';
 import type { DjSet, SetSlot, Track } from '../../db/types';
 import { markSetPlayed, pairKey, playSecFor, saveSet } from '../../db/sets';
@@ -22,6 +22,10 @@ import { ExportDialog } from './ExportDialog';
 import { GRADE_STYLE } from './grade';
 import { SetChart } from './SetChart';
 import { TrackPicker } from './TrackPicker';
+import { ImportToSetDialog, type ImportToSetResult } from './ImportToSetDialog';
+import { DropOverlay } from '../../components/DropOverlay';
+import { useFileDrop } from '../../lib/useFileDrop';
+import { readPlaylistFile, type PlaylistFile } from '../../importers/playlistFile';
 
 type Snapshot = Pick<DjSet, 'slots' | 'poolIds'>;
 
@@ -55,6 +59,9 @@ export function SetEditor({ setId }: { setId: string }) {
   const [dragOver, setDragOver] = useState<number | null>(null);
   const [confirmPlayed, setConfirmPlayed] = useState(false);
   const rowRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const [playlist, setPlaylist] = useState<PlaylistFile | null>(null);
+  const csvRef = useRef<HTMLInputElement>(null);
+  const dragging = useFileDrop((f) => void readPlaylistFile(f).then(setPlaylist), !!draft);
 
   // Last settet inn én gang; deretter er det lokale utkastet fasit (lagres fortløpende)
   useEffect(() => {
@@ -213,6 +220,16 @@ export function SetEditor({ setId }: { setId: string }) {
     }, true);
   const removeFromPool = (id: string) => update((s) => ({ ...s, poolIds: s.poolIds.filter((x) => x !== id) }), true);
   const scrollTo = (i: number) => rowRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // Spilleliste fra Exportify: i potten, eller bakerst i settet i spillelistens rekkefølge
+  const addPlaylist = ({ ids, mode }: ImportToSetResult) =>
+    update((s) => {
+      const inSlots = new Set(s.slots.map((x) => x.trackId));
+      return {
+        ...s,
+        poolIds: Array.from(new Set([...s.poolIds, ...ids])),
+        slots: mode === 'order' ? [...s.slots, ...ids.filter((id) => !inSlots.has(id)).map((trackId) => ({ trackId, locked: false }))] : s.slots,
+      };
+    }, true);
 
   const choice = (on: boolean) => `min-h-10 rounded-xl border px-3 text-[13px] transition ${on ? 'border-accent/50 bg-accent-soft text-accent' : 'border-line text-ink2 hover:border-[#5c5752] hover:text-ink'}`;
 
@@ -277,6 +294,9 @@ export function SetEditor({ setId }: { setId: string }) {
         </Button>
         <Button onClick={() => setPickerOpen(true)}>
           <Plus size={16} /> Add tracks
+        </Button>
+        <Button onClick={() => csvRef.current?.click()} title="Add a Spotify playlist exported from Exportify (or drag the file here)">
+          <FileSpreadsheet size={16} /> Import CSV
         </Button>
         <Button onClick={() => setExportOpen(true)} disabled={!slotTracks.length}>
           <Share size={16} /> Export
@@ -361,12 +381,17 @@ export function SetEditor({ setId }: { setId: string }) {
           icon={<Sparkles size={28} />}
           title="Start with a pool of tracks"
           actions={
-            <Button variant="primary" onClick={() => setPickerOpen(true)}>
-              <Plus size={16} /> Add tracks
-            </Button>
+            <>
+              <Button variant="primary" onClick={() => setPickerOpen(true)}>
+                <Plus size={16} /> Add tracks
+              </Button>
+              <Button onClick={() => csvRef.current?.click()}>
+                <FileSpreadsheet size={16} /> Import Exportify CSV
+              </Button>
+            </>
           }
         >
-          Add the tracks you’re considering — say, all your trance between 132 and 140 BPM — then press “Build order”. You’ll get three options to choose from.
+          Add the tracks you’re considering — say, all your trance between 132 and 140 BPM — or drag a Spotify playlist exported from Exportify (CSV) right here. Then press “Build order” to get three options.
         </EmptyState>
       ) : (
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
@@ -569,6 +594,19 @@ export function SetEditor({ setId }: { setId: string }) {
         </div>
       )}
 
+      <input
+        ref={csvRef}
+        type="file"
+        accept=".csv,.tsv,.txt,text/csv"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (f) setPlaylist(await readPlaylistFile(f));
+        }}
+      />
+      <DropOverlay show={dragging} title="Drop to add to this set" text="An Exportify CSV (or a .txt list). Tracks already in your library are reused." />
+      <ImportToSetDialog file={playlist} forNewSet={false} onClose={() => setPlaylist(null)} onConfirm={addPlaylist} />
       <TrackPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}

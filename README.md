@@ -71,6 +71,7 @@ Confident matches fill in empty fields automatically; your own values are never 
 
 **Building a set**
 1. **New set**, then add tracks to its pool (from the library, or “Add to a set” from any Browse page).
+   - **From a Spotify playlist:** export it at [exportify.net](https://exportify.net) and drag the CSV onto the **Sets** page (or click **From Exportify CSV**) — it becomes a new set named after the playlist. Inside a set, drag a CSV onto the page (or **Import CSV**) to add it. Choose “Let the engine order them” (into the pool) or “Keep playlist order”. Tracks already in your library are reused, and BPM/key/energy from the file are kept.
 2. **Build order** — the engine returns three different options; pick one.
 3. Fine-tune: drag rows (desktop) or use ↑/↓, lock tracks to their position, rebuild around them. **Ctrl+Z** undoes.
 4. Every transition gets a score, an icon and an explanation, e.g. “8A → 9A: +1 on the wheel · +2 BPM (1.6%) · energy 6 → 7 — perfect”. Weak ones offer **Find bridge track**.

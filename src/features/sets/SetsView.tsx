@@ -1,18 +1,25 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CalendarDays, Copy, Download, ListMusic, Plus, Trash2 } from 'lucide-react';
+import { CalendarDays, Copy, Download, FileSpreadsheet, ListMusic, Plus, Trash2 } from 'lucide-react';
 import { db } from '../../db/db';
 import type { DjSet, Track } from '../../db/types';
-import { createSet, deleteSet, duplicateSet, playSecFor } from '../../db/sets';
+import { createSet, deleteSet, duplicateSet, playSecFor, saveSet } from '../../db/sets';
 import { analyzeSet } from '../../engine/analysis';
 import { Button, EmptyState, IconButton, Modal, PageHeader, fmtDate } from '../../components/ui';
 import { formatDuration } from '../../lib/normalize';
 import { href, navigate } from '../../lib/router';
+import { useFileDrop } from '../../lib/useFileDrop';
+import { readPlaylistFile, type PlaylistFile } from '../../importers/playlistFile';
+import { DropOverlay } from '../../components/DropOverlay';
+import { ImportToSetDialog, type ImportToSetResult } from './ImportToSetDialog';
 
 export function SetsView() {
   const sets = useLiveQuery(() => db.sets.orderBy('updatedAt').reverse().toArray(), []);
   const tracks = useLiveQuery(() => db.tracks.toArray(), []);
   const [confirmDelete, setConfirmDelete] = useState<DjSet | null>(null);
+  const [playlist, setPlaylist] = useState<PlaylistFile | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const dragging = useFileDrop((f) => void readPlaylistFile(f).then(setPlaylist));
 
   if (!sets || !tracks) return null;
 
@@ -26,6 +33,17 @@ export function SetsView() {
     const s = await createSet(`New set · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`);
     navigate({ name: 'set', id: s.id });
   };
+  // Nytt set fra en Exportify-CSV: låtene i potten, eller rett inn i spillelistens rekkefølge
+  const setFromPlaylist = async ({ ids, mode, name }: ImportToSetResult) => {
+    const s = await createSet(name);
+    await saveSet({ ...s, poolIds: ids, slots: mode === 'order' ? ids.map((trackId) => ({ trackId, locked: false })) : [] });
+    navigate({ name: 'set', id: s.id });
+  };
+  const csvButton = (
+    <Button onClick={() => fileRef.current?.click()}>
+      <FileSpreadsheet size={16} /> From Exportify CSV
+    </Button>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -33,15 +51,40 @@ export function SetsView() {
         title="Sets"
         subtitle={sets.length ? `${sets.length} set${sets.length === 1 ? '' : 's'}` : undefined}
         actions={
-          <Button variant="primary" onClick={newSet}>
-            <Plus size={16} /> New set
-          </Button>
+          <>
+            {csvButton}
+            <Button variant="primary" onClick={newSet}>
+              <Plus size={16} /> New set
+            </Button>
+          </>
         }
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv,.tsv,.txt,text/csv"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (f) setPlaylist(await readPlaylistFile(f));
+        }}
       />
 
       {!sets.length ? (
-        <EmptyState icon={<ListMusic size={28} />} title="No sets yet" actions={<Button variant="primary" onClick={newSet}><Plus size={16} /> New set</Button>}>
-          Create a set, add tracks from your library to its pool, and let the engine suggest an order by key, BPM and energy curve.
+        <EmptyState
+          icon={<ListMusic size={28} />}
+          title="No sets yet"
+          actions={
+            <>
+              <Button variant="primary" onClick={newSet}>
+                <Plus size={16} /> New set
+              </Button>
+              {csvButton}
+            </>
+          }
+        >
+          Create a set and add tracks from your library — or drag a Spotify playlist exported from Exportify (CSV) onto this page to turn it into a set.
         </EmptyState>
       ) : (
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -86,6 +129,11 @@ export function SetsView() {
           })}
         </ul>
       )}
+
+      <p className="hidden text-center text-[13px] text-muted md:block">Tip: drag an Exportify CSV anywhere on this page to make a set from a Spotify playlist.</p>
+
+      <DropOverlay show={dragging} title="Drop to create a set" text="An Exportify CSV (or a .txt list) becomes a new set — tracks already in your library are reused." />
+      <ImportToSetDialog file={playlist} forNewSet onClose={() => setPlaylist(null)} onConfirm={setFromPlaylist} />
 
       <Modal
         open={!!confirmDelete}

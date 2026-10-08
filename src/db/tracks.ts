@@ -76,6 +76,65 @@ export async function addTracks(inputs: NewTrack[], database: DjDatabase = defau
   return tracks;
 }
 
+export interface UpsertResult {
+  /** Låtenes id-er i filens rekkefølge (uten doble) */
+  ids: string[];
+  created: number;
+  reused: number;
+  /** Eksisterende låter som fikk manglende BPM/key/energi fra filen */
+  filled: number;
+}
+
+/**
+ * Legg inn låter fra en spilleliste uten å lage duplikater: finnes låten allerede
+ * (samme artist/tittel/versjon), gjenbrukes den — og tomme felter fylles fra filen.
+ */
+export async function upsertImportedTracks(inputs: NewTrack[], opts: { status: Track['status']; tags?: string[] }, database: DjDatabase = defaultDb): Promise<UpsertResult> {
+  const now = new Date().toISOString();
+  const existing = new Map((await database.tracks.toArray()).map((t) => [t.dupKey, t]));
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  const toAdd: Track[] = [];
+  const toUpdate: Track[] = [];
+  let reused = 0;
+  for (const input of inputs) {
+    const base = sanitizeTrack({ ...emptyTrack(), ...input, status: opts.status, tags: Array.from(new Set([...(input.tags ?? []), ...(opts.tags ?? [])])) });
+    const dupKey = makeDupKey(base.artist, base.title, base.version);
+    if (seen.has(dupKey)) continue;
+    seen.add(dupKey);
+    const old = existing.get(dupKey);
+    if (old) {
+      reused++;
+      ids.push(old.id);
+      const fill: Partial<Track> = {};
+      const sources = { ...old.sources };
+      if (old.bpm == null && base.bpm != null) {
+        fill.bpm = base.bpm;
+        sources.bpm = 'import';
+      }
+      if (!old.camelot && base.camelot) {
+        fill.camelot = base.camelot;
+        sources.camelot = 'import';
+      }
+      if (old.energy == null && base.energy != null) fill.energy = base.energy;
+      if (old.durationSec == null && base.durationSec != null) fill.durationSec = base.durationSec;
+      if (old.year == null && base.year != null) fill.year = base.year;
+      if (!old.label && base.label) fill.label = base.label;
+      if (!old.genre && base.genre) fill.genre = base.genre;
+      if (Object.keys(fill).length) toUpdate.push({ ...old, ...fill, sources, updatedAt: now });
+      continue;
+    }
+    const t: Track = { ...base, id: newId(), dupKey, createdAt: now, updatedAt: now };
+    toAdd.push(t);
+    ids.push(t.id);
+  }
+  await database.transaction('rw', database.tracks, async () => {
+    if (toAdd.length) await database.tracks.bulkAdd(toAdd);
+    if (toUpdate.length) await database.tracks.bulkPut(toUpdate);
+  });
+  return { ids, created: toAdd.length, reused, filled: toUpdate.length };
+}
+
 export async function updateTrack(id: string, changes: Partial<Track>, database: DjDatabase = defaultDb): Promise<void> {
   await database.transaction('rw', database.tracks, async () => {
     const existing = await database.tracks.get(id);
