@@ -190,6 +190,16 @@ function Sidebar({ route, onClose }: { route: Route; onClose?: () => void }) {
         <button type="button" onClick={() => openHelp()} className="hidden min-h-10 items-center gap-3 rounded-xl px-3 text-sm text-ink2 hover:bg-raised/60 hover:text-ink lg:flex">
           <Keyboard size={18} className="text-muted" /> Shortcuts
         </button>
+        <p className="px-3 pb-1 pt-2 text-[11px] leading-snug text-muted">
+          BPM &amp; key data by{' '}
+          <a href="https://getsongbpm.com" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-ink2">
+            GetSongBPM
+          </a>
+          {' · '}
+          <a href="/credits.html" className="underline underline-offset-2 hover:text-ink2">
+            Credits
+          </a>
+        </p>
       </div>
     </div>
   );

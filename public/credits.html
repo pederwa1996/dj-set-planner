@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0e0d0c" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Credits · DJ Set Planner</title>
+    <meta name="description" content="DJ Set Planner uses BPM and key data from GetSongBPM.com, and track metadata from Deezer and MusicBrainz." />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        background: #141312;
+        color: #f3efe7;
+        font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 56px 16px 64px;
+      }
+      h1 {
+        font: 400 34px/1.2 Georgia, 'Times New Roman', serif;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font: 400 21px/1.3 Georgia, 'Times New Roman', serif;
+        margin: 32px 0 8px;
+      }
+      p,
+      li {
+        color: #bfb9ad;
+      }
+      ul {
+        padding-left: 20px;
+      }
+      a {
+        color: #ef6a3a;
+        text-underline-offset: 3px;
+      }
+      a:hover {
+        color: #ff7f4f;
+      }
+      .card {
+        margin-top: 24px;
+        padding: 20px;
+        border: 1px solid #34312e;
+        border-radius: 16px;
+        background: #1c1a19;
+      }
+      .card p {
+        margin: 0;
+        color: #f3efe7;
+      }
+      .back {
+        display: inline-block;
+        margin-top: 40px;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Credits</h1>
+      <p>DJ Set Planner is a personal tool for planning DJ sets: building a library, checking which tracks mix well together and putting them in a good order.</p>
+
+      <div class="card">
+        <p>BPM and key data provided by <a href="https://getsongbpm.com">GetSongBPM.com</a>.</p>
+      </div>
+
+      <h2>Data sources</h2>
+      <ul>
+        <li><a href="https://getsongbpm.com">GetSongBPM</a> — tempo (BPM) and musical key of tracks, through the <a href="https://getsongbpm.com/api">GetSongBPM API</a>.</li>
+        <li><a href="https://www.deezer.com">Deezer</a> — track length, release year, label and 30-second previews.</li>
+        <li><a href="https://musicbrainz.org">MusicBrainz</a> — track length and first release year.</li>
+      </ul>
+
+      <a class="back" href="/">← Back to DJ Set Planner</a>
+    </main>
+  </body>
+</html>
