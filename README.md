@@ -2,7 +2,7 @@
 
 A personal web app for planning DJ sets — even before you own the audio files. Build a library (from a pasted list, a Spotify playlist via Exportify, or one track at a time), look up BPM and key online, browse by key/genre/tempo/energy, and let a harmonic mix engine suggest the order of your set. Then export a shopping list of what to download.
 
-Everything is stored locally in your browser (IndexedDB). No login, no cloud.
+Everything is saved in your browser first (IndexedDB), so the app works offline. Sign in and it's also kept in the cloud (Supabase), so your library and sets are the same on your phone and computer.
 
 ## Run it on Render (no install)
 
@@ -14,7 +14,7 @@ The app is a static site, so it can be hosted for free on [Render](https://rende
 
 Every push to `main` deploys a new version automatically.
 
-> **Data and privacy:** Render only serves the app. Your tracks, sets and notes are stored in the browser on your device, not on Render. Anyone else opening the URL sees an empty app.
+> **Data and privacy:** Render only serves the app. Your tracks, sets and notes are stored in your browser and — when you're signed in — in your own Supabase account, protected by row-level security. Anyone else opening the URL sees an empty app and can't create an account.
 
 ## Run it locally
 
@@ -27,14 +27,24 @@ npm run dev
 
 Open the address Vite prints (usually http://localhost:5173). `npm run dev` also serves on your local network, so you can open the **Network** address on your phone (same Wi-Fi).
 
-> Data lives in the browser *on each device*. Use **Settings → Download backup** on one device and **Restore** on the other to move your library.
+> Sign in (Settings → Account & sync) on each device to share the same library. Without signing in, data lives only in that browser.
 
 | Command | What it does |
 |---|---|
-| `npm test` | Unit tests (mix engine, filters, importers, lookup, database) |
+| `npm test` | Unit tests (mix engine, filters, importers, lookup, database, sync) |
 | `npm run typecheck` | TypeScript check |
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Serve the production build locally |
+
+## Account & sync
+
+- **Settings → Account & sync → Create account** — choose a username and password. The app allows exactly one account (yours); after that, sign-ups are refused.
+- **Sign in on your other devices** with the same username and password. Tracks already on a device are merged into the account.
+- Sync runs automatically: shortly after every change, when the app regains focus or comes back online, and every 30 seconds. The sidebar shows the status (synced / syncing / offline).
+- Offline? Keep working — changes are saved locally and uploaded when you're back online. If the same track was changed on two devices, the newest change wins. Deletions sync too.
+- No email is involved, so there's no password reset by email. If you forget the password, it can be reset from the Supabase project.
+
+How it works: `src/sync/engine.ts` (pull changes since last time, then push local changes and deletions, last-write-wins), `src/sync/syncStore.ts` (when to sync, status), `supabase/` (table, security rules and the account function).
 
 ## Using it
 
@@ -95,6 +105,7 @@ Confident matches fill in empty fields automatically; your own values are never 
 ## Project structure
 
 ```
+supabase/          Database migration and Edge Function for the cloud account
 src/
   engine/          Mix engine (pure TypeScript, unit-tested)
   db/              Dexie/IndexedDB: schema, tracks, sets, backup
@@ -103,6 +114,7 @@ src/
   exporters/       Text, CSV and shop links for sets
   components/      Shared UI (buttons, dialogs, badges, Camelot wheel, track rows)
   lib/             Router, settings, hooks, normalisation
+  sync/            Cloud sync: Supabase client, sign-in, sync engine and status
   features/
     home/          Home screen
     library/       Library table, filters, track editor, online lookup panel
@@ -118,5 +130,6 @@ src/
 - [x] Import from pasted lists and CSV; online BPM/key lookup
 - [x] Mix engine, set builder, visualisation, gaps and bridge tracks, export
 - [x] Home screen, Browse by category, English UI, new design
+- [x] Account with username/password and cloud sync between devices (Supabase)
 - [ ] Genre profiles and recommendations from external sources
 - [ ] Audio files: import with tags, BPM/key analysis to double-check values, preview player, Rekordbox/Traktor export

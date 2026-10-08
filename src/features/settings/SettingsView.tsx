@@ -11,6 +11,7 @@ import { getSongBpmAdapter } from '../../sources/getsongbpm';
 import { deezerAdapter } from '../../sources/deezer';
 import { musicBrainzAdapter } from '../../sources/musicbrainz';
 import type { SourceAdapter } from '../../sources/types';
+import { AccountSection } from './AccountSection';
 
 function Section({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
   return (
@@ -75,7 +76,11 @@ export function SettingsView() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="Settings" subtitle="Online lookup, backup and data. Everything is stored in this browser, on this device." />
+      <PageHeader title="Settings" subtitle="Account and sync, online lookup, backup and data." />
+
+      <Section title="Account & sync" description="Save your library and sets in the cloud, so they’re the same on your phone and computer — and never disappear with the browser. The app still works offline.">
+        <AccountSection />
+      </Section>
 
       <Section title="Online lookup" description="BPM and key come from GetSongBPM, which needs a free API key. Deezer and MusicBrainz fill in length, year and label without a key.">
         <Field
@@ -100,14 +105,14 @@ export function SettingsView() {
             </Button>
           </div>
         </Field>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           {source('getsongbpm', 'GetSongBPM', 'BPM and key. Needs a key. Max 3,000 lookups per hour.', settings.getSongBpmKey ? getSongBpmAdapter(settings.getSongBpmKey) : null)}
           {source('deezer', 'Deezer', 'Length, year, label, genre and sometimes BPM. No key needed.', deezerAdapter)}
           {source('musicbrainz', 'MusicBrainz', 'Length, first release year and versions. No key needed.', musicBrainzAdapter)}
         </div>
       </Section>
 
-      <Section title="Backup" description="Download everything (tracks, sets, notes) as one file. Use it to move your library between computer and phone.">
+      <Section title="Backup" description="A safety copy of everything (tracks, sets, notes) as one file. Handy before big changes — your cloud account already keeps devices in sync.">
         <div className="flex flex-wrap gap-2">
           <Button
             variant="primary"
@@ -155,7 +160,7 @@ export function SettingsView() {
         {msg && <p className="rounded-xl bg-raised px-4 py-3 text-sm">{msg}</p>}
       </Section>
 
-      <Section title="Data" description="What’s stored on this device right now.">
+      <Section title="Data" description="What’s on this device right now (also stored in the cloud when you’re signed in).">
         <p className="text-sm text-ink2">{counts ? `${counts.tracks} tracks · ${counts.sets} sets` : '…'}</p>
         {counts && counts.samples.length > 0 && (
           <div>

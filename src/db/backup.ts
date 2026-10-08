@@ -1,4 +1,4 @@
-import { db as defaultDb, type DjDatabase } from './db';
+import { addTombstones, db as defaultDb, type DjDatabase } from './db';
 import type { DjSet, Track } from './types';
 import { emptyTrack } from './tracks';
 import { makeDupKey } from '../lib/normalize';
@@ -33,16 +33,24 @@ export async function restoreBackup(data: unknown, mode: 'replace' | 'merge', da
   }
   if ((b.version ?? 0) > BACKUP_VERSION) throw new Error('This backup was made by a newer version of the app.');
   // Fyll inn felter som kan mangle i eldre backuper
+  // Gjenopprettede data regnes som endret nå, så de synkroniseres ut til andre enheter
+  const now = new Date().toISOString();
   const tracks: Track[] = b.tables.tracks.map((t) => {
-    const full = { ...emptyTrack(), ...t } as Track;
+    const full = { ...emptyTrack(), ...t, updatedAt: now } as Track;
     full.dupKey = makeDupKey(full.artist, full.title, full.version);
     return full;
   });
-  const sets = Array.isArray(b.tables.sets) ? b.tables.sets : [];
-  await database.transaction('rw', database.tracks, database.sets, async () => {
+  const sets: DjSet[] = (Array.isArray(b.tables.sets) ? b.tables.sets : []).map((s) => ({ ...s, updatedAt: now }));
+  await database.transaction('rw', database.tracks, database.sets, database.tombstones, async () => {
     if (mode === 'replace') {
+      const keepT = new Set(tracks.map((t) => t.id));
+      const keepS = new Set(sets.map((s) => s.id));
+      const goneT = (await database.tracks.toCollection().primaryKeys()).filter((id) => !keepT.has(id));
+      const goneS = (await database.sets.toCollection().primaryKeys()).filter((id) => !keepS.has(id));
       await database.tracks.clear();
       await database.sets.clear();
+      await addTombstones(database, 'track', goneT);
+      await addTombstones(database, 'set', goneS);
     }
     await database.tracks.bulkPut(tracks);
     await database.sets.bulkPut(sets);

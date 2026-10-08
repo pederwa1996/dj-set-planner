@@ -8,6 +8,8 @@ import { href, navigate, useRoute, type Route } from './lib/router';
 import { closeHelp, closeImport, closeTrack, openHelp, openImport, openTrack, useUi, anyDialogOpen } from './lib/uiStore';
 import { useHotkeys } from './lib/useHotkeys';
 import { cancelBulkLookup, dismissBulkLookup, useBulkLookup } from './sources/bulkStore';
+import { startSync } from './sync/syncStore';
+import { SyncBadge } from './components/SyncBadge';
 import { Button, Modal } from './components/ui';
 import { Logo } from './components/Logo';
 import { HomeView } from './features/home/HomeView';
@@ -27,6 +29,7 @@ export default function App() {
 
   useEffect(() => {
     requestPersistentStorage();
+    startSync();
   }, []);
   useEffect(() => setDrawer(false), [route]);
 
@@ -176,6 +179,7 @@ function Sidebar({ route, onClose }: { route: Route; onClose?: () => void }) {
       )}
 
       <div className="mt-auto flex flex-col gap-1 border-t border-line/60 pt-2">
+        <SyncBadge />
         <button type="button" onClick={() => openImport()} className="flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm text-ink2 hover:bg-raised/60 hover:text-ink">
           <Upload size={18} className="text-muted" /> Import tracks
         </button>

@@ -12,6 +12,19 @@ export default defineConfig({
   plugins: [react()],
   server: { proxy: apiProxy },
   preview: { proxy: apiProxy },
+  build: {
+    rollupOptions: {
+      output: {
+        // Store biblioteker i egne filer, så nettleseren kan cache dem mellom versjoner
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          data: ['dexie', 'dexie-react-hooks'],
+          supabase: ['@supabase/supabase-js'],
+          icons: ['lucide-react'],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'node',

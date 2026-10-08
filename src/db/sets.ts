@@ -1,4 +1,4 @@
-import { db as defaultDb, type DjDatabase } from './db';
+import { addTombstones, db as defaultDb, type DjDatabase } from './db';
 import type { DjSet, Track } from './types';
 import { presetCurve } from '../engine/energy';
 import { DEFAULT_PLAY_SEC } from '../engine/sequencer';
@@ -57,7 +57,10 @@ export async function duplicateSet(id: string, database: DjDatabase = defaultDb)
 }
 
 export async function deleteSet(id: string, database: DjDatabase = defaultDb): Promise<void> {
-  await database.sets.delete(id);
+  await database.transaction('rw', database.sets, database.tombstones, async () => {
+    await database.sets.delete(id);
+    await addTombstones(database, 'set', [id]);
+  });
 }
 
 /** Marker settet som spilt: øker «antall ganger spilt» og setter «spilt sist» på låtene. */

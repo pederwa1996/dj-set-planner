@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertCircle, ArrowRight, CalendarDays, Compass, Download, Gauge, Globe, KeyRound, ListMusic, Plus, Sparkles, Upload } from 'lucide-react';
+import { AlertCircle, ArrowRight, CalendarDays, Cloud, CloudOff, Compass, Download, Gauge, Globe, KeyRound, ListMusic, Plus, Sparkles, Upload } from 'lucide-react';
 import { db } from '../../db/db';
 import type { DjSet, Track } from '../../db/types';
 import { addTracks } from '../../db/tracks';
@@ -15,6 +15,7 @@ import { useSettings } from '../../lib/settings';
 import { openImport, openTrack } from '../../lib/uiStore';
 import { startBulkLookup, useBulkLookup } from '../../sources/bulkStore';
 import { needsCheck } from '../library/filter';
+import { useSync } from '../../sync/syncStore';
 import { SAMPLE_TRACKS } from '../library/sampleData';
 
 function greeting(d = new Date()) {
@@ -86,6 +87,7 @@ export function HomeView() {
   const sets = useLiveQuery(() => db.sets.toArray(), []);
   const [settings] = useSettings();
   const bulk = useBulkLookup();
+  const sync = useSync();
 
   const byId = useMemo(() => new Map((tracks ?? []).map((t) => [t.id, t])), [tracks]);
   const next = useMemo(() => (sets ? pickNextSet(sets) : null), [sets]);
@@ -155,6 +157,13 @@ export function HomeView() {
               );
             })}
           </ol>
+          {sync.status === 'signed-out' && (
+            <a href={href({ name: 'settings' })} className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm transition hover:bg-accent/20">
+              <Cloud size={18} className="text-accent" />
+              <span className="flex-1">Already set up on another device? Sign in to bring your library here.</span>
+              <ArrowRight size={16} className="text-muted" />
+            </a>
+          )}
           <div className="border-t border-line pt-4 text-sm text-muted">
             Just looking around?{' '}
             <button type="button" className="text-accent hover:underline" onClick={() => addTracks(SAMPLE_TRACKS)}>
@@ -164,6 +173,19 @@ export function HomeView() {
         </section>
       ) : (
         <>
+          {sync.status === 'signed-out' && (
+            <a href={href({ name: 'settings' })} className="card flex items-center gap-4 border-accent/30 p-4 transition hover:bg-raised/40">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
+                <CloudOff size={19} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">Your library is only on this device</span>
+                <span className="text-[13px] text-muted">Sign in to save it in the cloud and get the same tracks and sets on your phone and computer.</span>
+              </span>
+              <ArrowRight size={18} className="text-muted" />
+            </a>
+          )}
+
           {/* Neste set */}
           {next && nextStats ? (
             <a href={href({ name: 'set', id: next.id })} className="card group flex flex-col gap-4 p-5 transition hover:border-[#5a5953] sm:p-6">

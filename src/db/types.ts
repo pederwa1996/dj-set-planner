@@ -89,3 +89,11 @@ export interface DjSet {
   createdAt: string;
   updatedAt: string;
 }
+
+/** Spor etter en slettet låt eller et slettet set (for synkronisering) */
+export interface Tombstone {
+  key: string; // "track:<id>" eller "set:<id>"
+  kind: 'track' | 'set';
+  id: string;
+  deletedAt: string;
+}

@@ -1,4 +1,4 @@
-import { db as defaultDb, type DjDatabase } from './db';
+import { addTombstones, db as defaultDb, type DjDatabase } from './db';
 import type { NewTrack, Track } from './types';
 import { makeDupKey, newId } from '../lib/normalize';
 import { toCamelot } from '../engine/camelot';
@@ -87,5 +87,8 @@ export async function updateTrack(id: string, changes: Partial<Track>, database:
 }
 
 export async function deleteTracks(ids: string[], database: DjDatabase = defaultDb): Promise<void> {
-  await database.tracks.bulkDelete(ids);
+  await database.transaction('rw', database.tracks, database.tombstones, async () => {
+    await database.tracks.bulkDelete(ids);
+    await addTombstones(database, 'track', ids);
+  });
 }
