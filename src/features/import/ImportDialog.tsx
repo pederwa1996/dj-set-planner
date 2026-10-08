@@ -98,7 +98,7 @@ export function ImportDialog({ open, onClose, existing, genres, tags }: { open: 
             <p className="text-[13px] text-muted">One track per line, like “Chicane - Saltwater” or “Eric Prydz – Opus (Original Mix)”. Numbering and lengths at the end are ignored.</p>
             <textarea className="input min-h-44 font-mono text-[13px]" placeholder={'Paul van Dyk - For An Angel (PvD E-Werk Club Mix)\nChicane - Saltwater\nEric Prydz - Opus'} value={text} onChange={(e) => setText(e.target.value)} aria-label="Track list" />
             <label className="flex min-h-9 items-center gap-2 text-sm text-ink2">
-              <input type="checkbox" className="h-[18px] w-[18px] accent-[#d97757]" checked={order === 'title-artist'} onChange={(e) => setOrder(e.target.checked ? 'title-artist' : 'artist-title')} />
+              <input type="checkbox" className="h-[18px] w-[18px] accent-[#ef6a3a]" checked={order === 'title-artist'} onChange={(e) => setOrder(e.target.checked ? 'title-artist' : 'artist-title')} />
               My list is “Title - Artist” (reversed)
             </label>
           </div>
@@ -175,11 +175,11 @@ export function ImportDialog({ open, onClose, existing, genres, tags }: { open: 
 
         <div className="flex flex-col gap-1">
           <label className="flex min-h-10 items-center gap-3 text-sm text-ink2">
-            <input type="checkbox" className="h-[18px] w-[18px] accent-[#d97757]" checked={skipExisting} onChange={(e) => setSkipExisting(e.target.checked)} />
+            <input type="checkbox" className="h-[18px] w-[18px] accent-[#ef6a3a]" checked={skipExisting} onChange={(e) => setSkipExisting(e.target.checked)} />
             Skip tracks already in my library
           </label>
           <label className="flex min-h-10 items-center gap-3 text-sm text-ink2">
-            <input type="checkbox" className="h-[18px] w-[18px] accent-[#d97757]" checked={lookup} onChange={(e) => setLookup(e.target.checked)} />
+            <input type="checkbox" className="h-[18px] w-[18px] accent-[#ef6a3a]" checked={lookup} onChange={(e) => setLookup(e.target.checked)} />
             Look up BPM, key and length online afterwards (for tracks missing them)
           </label>
           {lookup && !settings.getSongBpmKey && (

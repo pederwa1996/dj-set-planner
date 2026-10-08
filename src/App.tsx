@@ -8,7 +8,7 @@ import { href, navigate, useRoute, type Route } from './lib/router';
 import { closeHelp, closeImport, closeTrack, openHelp, openImport, openTrack, useUi, anyDialogOpen } from './lib/uiStore';
 import { useHotkeys } from './lib/useHotkeys';
 import { cancelBulkLookup, dismissBulkLookup, useBulkLookup } from './sources/bulkStore';
-import { startSync } from './sync/syncStore';
+import { startSync, useSync } from './sync/syncStore';
 import { SyncBadge } from './components/SyncBadge';
 import { Button, Modal } from './components/ui';
 import { Logo } from './components/Logo';
@@ -118,13 +118,14 @@ function NavItem({ to, active, icon, children }: { to: Route; active: boolean; i
 
 function Sidebar({ route, onClose }: { route: Route; onClose?: () => void }) {
   const sets = useLiveQuery(() => db.sets.orderBy('updatedAt').reverse().limit(8).toArray(), []);
+  const sync = useSync();
   const is = (...names: Route['name'][]) => names.includes(route.name);
 
   return (
     <div className="flex h-full w-full flex-col gap-1 px-3 py-3">
       <div className="flex items-center gap-2 px-2 pb-3 pt-1">
         <a href="#/" className="flex items-center gap-2.5">
-          <Logo size={24} />
+          <Logo size={24} spin={sync.status === 'syncing'} />
           <span className="serif text-[19px]">Set Planner</span>
         </a>
         {onClose && (
@@ -142,7 +143,7 @@ function Sidebar({ route, onClose }: { route: Route; onClose?: () => void }) {
         }}
         className="mb-2 flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm text-ink transition hover:bg-raised/60"
       >
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-[#1f1e1d]">
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-[#0e0d0c]">
           <Plus size={15} strokeWidth={2.5} />
         </span>
         New set

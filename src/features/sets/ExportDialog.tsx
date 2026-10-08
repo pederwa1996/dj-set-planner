@@ -69,7 +69,7 @@ export function ExportDialog({ open, onClose, set, tracks, analysis }: { open: b
                       </span>
                       <span className="flex flex-wrap gap-1.5 text-xs">
                         {shopLinks(t).map((l) => (
-                          <a key={l.name} href={l.url} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-2 py-1 text-ink2 transition hover:border-[#6b6a63] hover:text-ink">
+                          <a key={l.name} href={l.url} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-2 py-1 text-ink2 transition hover:border-[#5c5752] hover:text-ink">
                             {l.name}
                           </a>
                         ))}

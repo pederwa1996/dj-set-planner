@@ -48,7 +48,7 @@ export function SetsView() {
           {sets.map((s) => {
             const st = stats(s);
             return (
-              <li key={s.id} className="card group relative flex flex-col gap-3 p-5 transition hover:border-[#5a5953]">
+              <li key={s.id} className="card group relative flex flex-col gap-3 p-5 transition hover:border-[#4a4642]">
                 <a href={href({ name: 'set', id: s.id })} className="flex flex-col gap-1 after:absolute after:inset-0 after:rounded-2xl" aria-label={`Open ${s.name}`}>
                   <span className="flex items-center gap-1.5 text-[13px] text-muted">
                     <CalendarDays size={13} />

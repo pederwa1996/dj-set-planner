@@ -7,8 +7,8 @@ import { href, keyRoute, type Route } from '../lib/router';
 
 type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger';
 const variants: Record<Variant, string> = {
-  primary: 'bg-cream text-[#1f1e1d] hover:bg-white font-medium',
-  accent: 'bg-accent text-[#1f1e1d] hover:bg-[#e08a6c] font-medium',
+  primary: 'bg-cream text-[#0e0d0c] hover:bg-white font-medium',
+  accent: 'bg-accent text-[#0e0d0c] hover:bg-[#ff7f4f] font-medium',
   secondary: 'border border-line text-ink hover:bg-raised',
   ghost: 'text-ink2 hover:bg-raised hover:text-ink',
   danger: 'bg-bad text-white hover:bg-[#de4b4b] font-medium',
@@ -119,7 +119,7 @@ export function Stars({ value, onChange, size = 'md' }: { value: number; onChang
   return (
     <span className="inline-flex items-center" aria-label={`${value} of 5 stars`}>
       {[1, 2, 3, 4, 5].map((n) => {
-        const icon = <Star size={px} className={n <= value ? 'fill-accent text-accent' : 'text-[#55544e]'} />;
+        const icon = <Star size={px} className={n <= value ? 'fill-accent text-accent' : 'text-[#46423e]'} />;
         return onChange ? (
           <button key={n} type="button" className="grid h-11 w-9 place-items-center" onClick={() => onChange(n === value ? 0 : n)} aria-label={`${n} stars`}>
             {icon}
@@ -136,10 +136,10 @@ export function Stars({ value, onChange, size = 'md' }: { value: number; onChang
 
 /** Energi 1–10 som én fargetone fra dempet til sterk (sekvensiell skala, tallet vises alltid) */
 export function energyStyle(e: number | null): React.CSSProperties {
-  if (e == null) return { background: '#3a3936', color: '#9c9a91' };
+  if (e == null) return { background: '#272523', color: '#8f897e' };
   const t = (Math.min(10, Math.max(1, e)) - 1) / 9;
   const mix = (a: number, b: number) => Math.round(a + (b - a) * t);
-  return { background: `rgb(${mix(74, 217)}, ${mix(72, 89)}, ${mix(66, 38)})`, color: '#fff' };
+  return { background: `rgb(${mix(62, 217)}, ${mix(58, 89)}, ${mix(54, 38)})`, color: '#fff' };
 }
 
 export function EnergyBadge({ value }: { value: number | null }) {
@@ -171,7 +171,7 @@ export function EnergyPicker({ value, onChange }: { value: number | null; onChan
 
 /** Fast farge per posisjon på Camelot-hjulet (med tekst, så fargen er aldri alene) */
 export function keyColor(camelot: string | null): string {
-  if (!camelot) return '#4a4944';
+  if (!camelot) return '#3b3835';
   const num = parseInt(camelot, 10);
   const minor = camelot.endsWith('A');
   return `hsl(${((num - 1) * 30 + 10) % 360} ${minor ? 38 : 46}% ${minor ? 36 : 44}%)`;
@@ -251,7 +251,7 @@ export function Chip({ children, onRemove, active, onClick, count }: { children:
   const c = count != null && <span className="text-xs tabular-nums text-muted">{count}</span>;
   if (onClick)
     return (
-      <button type="button" onClick={onClick} aria-pressed={active} className={`${base} min-h-9 hover:border-[#6b6a63] hover:text-ink`}>
+      <button type="button" onClick={onClick} aria-pressed={active} className={`${base} min-h-9 hover:border-[#5c5752] hover:text-ink`}>
         {children}
         {c}
       </button>

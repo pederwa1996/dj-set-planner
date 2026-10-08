@@ -15,10 +15,10 @@
     -webkit-tap-highlight-color: transparent;
   }
   ::selection {
-    background: #d9775755;
+    background: #ef6a3a55;
   }
   :focus-visible {
-    outline: 2px solid #d97757;
+    outline: 2px solid #ef6a3a;
     outline-offset: 2px;
   }
   a {
@@ -28,7 +28,7 @@
 
 @layer components {
   .input {
-    @apply min-h-11 rounded-xl border border-line bg-surface px-3.5 py-2 text-ink transition placeholder:text-muted hover:border-[#55544e] focus:border-[#6b6a63] focus:outline-none;
+    @apply min-h-11 rounded-xl border border-line bg-surface px-3.5 py-2 text-ink transition placeholder:text-muted hover:border-[#46423e] focus:border-[#5c5752] focus:outline-none;
   }
   select.input {
     @apply pr-8;
@@ -52,7 +52,7 @@ input[type='number']::-webkit-outer-spin-button {
 /* Tynne, rolige rullefelt */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #4a4944 transparent;
+  scrollbar-color: #3b3835 transparent;
 }
 
 /* Cheat sheet: only visible when printing */

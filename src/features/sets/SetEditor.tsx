@@ -214,7 +214,7 @@ export function SetEditor({ setId }: { setId: string }) {
   const removeFromPool = (id: string) => update((s) => ({ ...s, poolIds: s.poolIds.filter((x) => x !== id) }), true);
   const scrollTo = (i: number) => rowRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  const choice = (on: boolean) => `min-h-10 rounded-xl border px-3 text-[13px] transition ${on ? 'border-accent/50 bg-accent-soft text-accent' : 'border-line text-ink2 hover:border-[#6b6a63] hover:text-ink'}`;
+  const choice = (on: boolean) => `min-h-10 rounded-xl border px-3 text-[13px] transition ${on ? 'border-accent/50 bg-accent-soft text-accent' : 'border-line text-ink2 hover:border-[#5c5752] hover:text-ink'}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -227,17 +227,17 @@ export function SetEditor({ setId }: { setId: string }) {
           <ChevronRight size={14} />
         </nav>
         <input
-          className="serif -mx-2 w-full rounded-xl border border-transparent bg-transparent px-2 py-1 text-[28px] leading-tight text-ink transition hover:border-line focus:border-[#6b6a63] focus:outline-none sm:text-[34px]"
+          className="serif -mx-2 w-full rounded-xl border border-transparent bg-transparent px-2 py-1 text-[28px] leading-tight text-ink transition hover:border-line focus:border-[#5c5752] focus:outline-none sm:text-[34px]"
           value={set.name}
           onChange={(e) => update((s) => ({ ...s, name: e.target.value }))}
           aria-label="Set name"
         />
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 rounded-xl border border-line px-3 text-sm text-ink2 focus-within:border-[#6b6a63]">
+          <label className="flex items-center gap-2 rounded-xl border border-line px-3 text-sm text-ink2 focus-within:border-[#5c5752]">
             <CalendarDays size={15} className="text-muted" />
             <input type="date" className="min-h-10 bg-transparent focus:outline-none" value={set.date ?? ''} onChange={(e) => update((s) => ({ ...s, date: e.target.value || null }))} aria-label="Date" />
           </label>
-          <label className="flex min-w-0 flex-1 basis-48 items-center gap-2 rounded-xl border border-line px-3 text-sm text-ink2 focus-within:border-[#6b6a63] sm:max-w-xs">
+          <label className="flex min-w-0 flex-1 basis-48 items-center gap-2 rounded-xl border border-line px-3 text-sm text-ink2 focus-within:border-[#5c5752] sm:max-w-xs">
             <MapPin size={15} className="text-muted" />
             <input className="min-h-10 w-full bg-transparent placeholder:text-muted focus:outline-none" placeholder="Venue / event" value={set.venue} onChange={(e) => update((s) => ({ ...s, venue: e.target.value }))} aria-label="Venue" />
           </label>
@@ -415,7 +415,7 @@ export function SetEditor({ setId }: { setId: string }) {
                     }}
                   >
                     <div
-                      className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border bg-surface px-2 py-2 transition sm:flex-nowrap ${dragOver === i && dragFrom !== i ? 'border-accent' : slot.locked ? 'border-[#6b6a63]' : 'border-line'} ${dragFrom === i ? 'opacity-40' : ''}`}
+                      className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border bg-surface px-2 py-2 transition sm:flex-nowrap ${dragOver === i && dragFrom !== i ? 'border-accent' : slot.locked ? 'border-[#5c5752]' : 'border-line'} ${dragFrom === i ? 'opacity-40' : ''}`}
                       draggable
                       onDragStart={(e) => {
                         setDragFrom(i);
@@ -426,7 +426,7 @@ export function SetEditor({ setId }: { setId: string }) {
                         setDragOver(null);
                       }}
                     >
-                      <span className="hidden cursor-grab text-[#5a5953] sm:block" title="Drag to move">
+                      <span className="hidden cursor-grab text-[#4a4642] sm:block" title="Drag to move">
                         <GripVertical size={16} />
                       </span>
                       <div className="flex w-11 shrink-0 flex-col items-center">
@@ -497,7 +497,7 @@ export function SetEditor({ setId }: { setId: string }) {
                           {set.transitionNotes[noteKey] || noteOpen === noteKey ? (
                             <input
                               autoFocus={noteOpen === noteKey && !set.transitionNotes[noteKey]}
-                              className="-mx-2 w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-[13px] text-ink placeholder:text-[#6b6a63] hover:border-line focus:border-[#6b6a63] focus:outline-none"
+                              className="-mx-2 w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-[13px] text-ink placeholder:text-[#5c5752] hover:border-line focus:border-[#5c5752] focus:outline-none"
                               placeholder="e.g. “filter out the bass over 16 bars”"
                               aria-label="Transition note"
                               value={set.transitionNotes[noteKey] ?? ''}
@@ -513,7 +513,7 @@ export function SetEditor({ setId }: { setId: string }) {
                               }}
                             />
                           ) : (
-                            <button type="button" onClick={() => setNoteOpen(noteKey)} className="self-start text-[12px] text-[#6b6a63] transition hover:text-ink2">
+                            <button type="button" onClick={() => setNoteOpen(noteKey)} className="self-start text-[12px] text-[#5c5752] transition hover:text-ink2">
                               + Note
                             </button>
                           )}

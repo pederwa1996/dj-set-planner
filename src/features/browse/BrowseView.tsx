@@ -71,7 +71,7 @@ export function BrowseView() {
         <Section title="Genres">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {s.genres.map(([g, n]) => (
-              <a key={g} href={cat('genre', g)} className="card flex min-h-20 flex-col justify-between p-4 transition hover:border-[#5a5953] hover:bg-raised/40">
+              <a key={g} href={cat('genre', g)} className="card flex min-h-20 flex-col justify-between p-4 transition hover:border-[#4a4642] hover:bg-raised/40">
                 <span className="font-medium">{g}</span>
                 <span className="text-[13px] text-muted">
                   {n} track{n === 1 ? '' : 's'}

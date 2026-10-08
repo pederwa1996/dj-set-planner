@@ -16,7 +16,7 @@ export function FilterPanel({ filter, onChange, genres, tags }: { filter: Librar
           <span className="text-muted">–</span>
           <NumberInput className="w-24" placeholder="to" label="BPM to" value={filter.bpmMax} onChange={(v) => set('bpmMax', v)} />
           <label className="ml-1 flex min-h-11 items-center gap-2 text-sm text-ink2">
-            <input type="checkbox" className="h-5 w-5 accent-[#d97757]" checked={filter.bpmHalfDouble} onChange={(e) => set('bpmHalfDouble', e.target.checked)} />
+            <input type="checkbox" className="h-5 w-5 accent-[#ef6a3a]" checked={filter.bpmHalfDouble} onChange={(e) => set('bpmHalfDouble', e.target.checked)} />
             include half/double time
           </label>
         </div>
@@ -43,7 +43,7 @@ export function FilterPanel({ filter, onChange, genres, tags }: { filter: Librar
         <div className="flex flex-wrap items-center gap-3">
           <h3 className={heading}>Key</h3>
           <label className="flex min-h-9 items-center gap-2 text-sm text-ink2">
-            <input type="checkbox" className="h-5 w-5 accent-[#d97757]" checked={filter.keyCompatible} onChange={(e) => set('keyCompatible', e.target.checked)} />
+            <input type="checkbox" className="h-5 w-5 accent-[#ef6a3a]" checked={filter.keyCompatible} onChange={(e) => set('keyCompatible', e.target.checked)} />
             also include compatible keys (±1, relative)
           </label>
         </div>

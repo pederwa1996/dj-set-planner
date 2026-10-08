@@ -5,16 +5,16 @@ export default {
     extend: {
       colors: {
         // Varme, mørke flater inspirert av Claude-appen
-        bg: '#262624',
-        sidebar: '#1f1e1d',
-        surface: '#30302e',
-        raised: '#3a3936',
-        line: '#44433f',
-        ink: '#f5f4ee',
-        ink2: '#c9c7bd',
-        muted: '#9c9a91',
-        cream: '#f0eee6',
-        accent: { DEFAULT: '#d97757', strong: '#c6613f', soft: '#d977571f' },
+        bg: '#141312',
+        sidebar: '#0e0d0c',
+        surface: '#1c1a19',
+        raised: '#272523',
+        line: '#34312e',
+        ink: '#f3efe7',
+        ink2: '#bfb9ad',
+        muted: '#8f897e',
+        cream: '#f1ece2',
+        accent: { DEFAULT: '#ef6a3a', strong: '#d9542a', soft: '#ef6a3a1f' },
         // Status (alltid sammen med ikon + ord)
         good: '#0ca30c',
         ok: '#fab219',

@@ -77,7 +77,7 @@ export function TrackPicker({ open, onClose, tracks, already, onAdd, genres }: {
             return (
               <li key={t.id}>
                 <label className={`flex min-h-12 items-center gap-3 rounded-xl px-2 ${inPool ? 'opacity-40' : 'hover:bg-raised'}`}>
-                  <input type="checkbox" className="h-[18px] w-[18px] accent-[#d97757]" disabled={inPool} checked={inPool || picked.has(t.id)} onChange={() => toggle(t.id)} />
+                  <input type="checkbox" className="h-[18px] w-[18px] accent-[#ef6a3a]" disabled={inPool} checked={inPool || picked.has(t.id)} onChange={() => toggle(t.id)} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm">
                       {t.artist} – {t.title}

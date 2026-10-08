@@ -162,7 +162,7 @@ export function TrackTable({
   const rows = tracks.slice(0, limit);
   const allSelected = tracks.length > 0 && tracks.every((t) => selected.has(t.id));
   const isDup = (t: Track) => (dupCounts.get(t.dupKey) ?? 0) > 1;
-  const check = (id: string) => <input type="checkbox" className="h-[18px] w-[18px] accent-[#d97757]" checked={selected.has(id)} onChange={() => onToggleSelect(id)} onClick={(e) => e.stopPropagation()} aria-label="Select" />;
+  const check = (id: string) => <input type="checkbox" className="h-[18px] w-[18px] accent-[#ef6a3a]" checked={selected.has(id)} onChange={() => onToggleSelect(id)} onClick={(e) => e.stopPropagation()} aria-label="Select" />;
 
   return (
     <>
@@ -179,7 +179,7 @@ export function TrackTable({
           <thead className="text-left">
             <tr className="border-b border-line/70">
               <th className="w-12 pl-4">
-                <input type="checkbox" className="h-[18px] w-[18px] accent-[#d97757]" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
+                <input type="checkbox" className="h-[18px] w-[18px] accent-[#ef6a3a]" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
               </th>
               {cols.map((c) => (
                 <th key={c.id} className="whitespace-nowrap p-0 font-normal" aria-sort={sort.column === c.id ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}>

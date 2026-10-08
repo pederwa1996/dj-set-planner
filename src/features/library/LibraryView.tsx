@@ -175,7 +175,7 @@ export function LibraryView() {
                 { value: 'wishlist', label: 'To get' },
               ]}
             />
-            <Button onClick={() => setShowFilters(!showFilters)} className={showFilters || chips.length ? 'border-[#6b6a63] text-ink' : ''}>
+            <Button onClick={() => setShowFilters(!showFilters)} className={showFilters || chips.length ? 'border-[#5c5752] text-ink' : ''}>
               <SlidersHorizontal size={16} /> Filters{chips.length ? ` · ${chips.length}` : ''}
             </Button>
             <IconButton label="Columns" className="hidden md:grid" onClick={() => setShowColumns(true)}>
@@ -304,7 +304,7 @@ export function LibraryView() {
             <label key={c.id} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm hover:bg-raised">
               <input
                 type="checkbox"
-                className="h-[18px] w-[18px] accent-[#d97757]"
+                className="h-[18px] w-[18px] accent-[#ef6a3a]"
                 checked={visible.includes(c.id)}
                 onChange={() => setVisible(visible.includes(c.id) ? visible.filter((x) => x !== c.id) : COLUMNS.map((x) => x.id).filter((id) => id === c.id || visible.includes(id)))}
               />

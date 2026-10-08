@@ -41,7 +41,7 @@ export function CurveEditor({ curve, onChange }: { curve: EnergyCurve; onChange:
             key={k}
             type="button"
             onClick={() => onChange(presetCurve(k))}
-            className={`min-h-9 rounded-full border px-3 text-[13px] transition ${curve.preset === k ? 'border-accent/50 bg-accent-soft text-accent' : 'border-line text-ink2 hover:border-[#6b6a63] hover:text-ink'}`}
+            className={`min-h-9 rounded-full border px-3 text-[13px] transition ${curve.preset === k ? 'border-accent/50 bg-accent-soft text-accent' : 'border-line text-ink2 hover:border-[#5c5752] hover:text-ink'}`}
           >
             {CURVE_PRESETS[k].label}
           </button>
@@ -66,21 +66,21 @@ export function CurveEditor({ curve, onChange }: { curve: EnergyCurve; onChange:
         >
           {[1, 5, 10].map((e) => (
             <g key={e}>
-              <line x1={P} x2={W - P} y1={y(e)} y2={y(e)} stroke="#44433f" />
-              <text x={P + 2} y={y(e) - 3} fontSize={10} fill="#9c9a91">
+              <line x1={P} x2={W - P} y1={y(e)} y2={y(e)} stroke="#34312e" />
+              <text x={P + 2} y={y(e) - 3} fontSize={10} fill="#8f897e">
                 {e}
               </text>
             </g>
           ))}
-          <polyline points={pts.map((p) => `${x(p.t)},${y(p.e)}`).join(' ')} fill="none" stroke="#d97757" strokeWidth={2} strokeLinejoin="round" />
+          <polyline points={pts.map((p) => `${x(p.t)},${y(p.e)}`).join(' ')} fill="none" stroke="#ef6a3a" strokeWidth={2} strokeLinejoin="round" />
           {pts.map((p, i) => (
             <circle
               key={i}
               cx={x(p.t)}
               cy={y(p.e)}
               r={drag === i ? 9 : 7}
-              fill="#d97757"
-              stroke="#1f1e1d"
+              fill="#ef6a3a"
+              stroke="#0e0d0c"
               strokeWidth={2}
               style={{ cursor: 'grab' }}
               onPointerDown={(ev) => {

@@ -48,7 +48,7 @@ function pickNextSet(sets: DjSet[]): DjSet | null {
 }
 
 function ActionCard({ icon, title, text, onClick, to }: { icon: ReactNode; title: string; text: string; onClick?: () => void; to?: Route }) {
-  const cls = 'card group flex min-h-[104px] flex-col gap-2 p-4 text-left transition hover:border-[#5a5953] hover:bg-raised/40';
+  const cls = 'card group flex min-h-[104px] flex-col gap-2 p-4 text-left transition hover:border-[#4a4642] hover:bg-raised/40';
   const inner = (
     <>
       <span className="text-accent">{icon}</span>
@@ -188,7 +188,7 @@ export function HomeView() {
 
           {/* Neste set */}
           {next && nextStats ? (
-            <a href={href({ name: 'set', id: next.id })} className="card group flex flex-col gap-4 p-5 transition hover:border-[#5a5953] sm:p-6">
+            <a href={href({ name: 'set', id: next.id })} className="card group flex flex-col gap-4 p-5 transition hover:border-[#4a4642] sm:p-6">
               <div className="flex items-start gap-4">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
                   <CalendarDays size={20} />

@@ -8,11 +8,11 @@ import { useElementWidth } from '../../lib/useElementWidth';
 import { GRADE_STYLE } from './grade';
 
 const ENERGY_COLOR = '#d95926';
-const TARGET_COLOR = '#f0eee6';
+const TARGET_COLOR = '#f1ece2';
 const BPM_COLOR = '#3987e5';
-const GRID = '#44433f';
-const SURFACE = '#30302e';
-const MUTED = '#9c9a91';
+const GRID = '#34312e';
+const SURFACE = '#1c1a19';
+const MUTED = '#8f897e';
 
 /**
  * Settet over tid: energi (søyler) mot målkurven, BPM (linje), key og overganger.
@@ -116,7 +116,7 @@ export function SetChart({ analysis, curve, onSelect }: { analysis: SetAnalysis<
         })}
         <polyline points={curvePts} fill="none" stroke={TARGET_COLOR} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         {peakIndex != null && items[peakIndex].track.energy != null && (
-          <text x={x(items[peakIndex].startSec + items[peakIndex].playSec / 2)} y={yE(items[peakIndex].track.energy!) - 6} fill="#f5f4ee" fontSize={10} textAnchor="middle">
+          <text x={x(items[peakIndex].startSec + items[peakIndex].playSec / 2)} y={yE(items[peakIndex].track.energy!) - 6} fill="#f3efe7" fontSize={10} textAnchor="middle">
             peak
           </text>
         )}
@@ -129,7 +129,7 @@ export function SetChart({ analysis, curve, onSelect }: { analysis: SetAnalysis<
             <g key={i}>
               <circle cx={cx} cy={trY} r={7} fill={g.color} stroke={SURFACE} strokeWidth={2} />
               {plotW / items.length > 14 && (
-                <text x={cx} y={trY + 3.5} fontSize={10} fontWeight={700} fill="#1f1e1d" textAnchor="middle">
+                <text x={cx} y={trY + 3.5} fontSize={10} fontWeight={700} fill="#0e0d0c" textAnchor="middle">
                   {g.icon}
                 </text>
               )}
@@ -179,7 +179,7 @@ export function SetChart({ analysis, curve, onSelect }: { analysis: SetAnalysis<
           </text>
         ))}
 
-        {h && <line x1={x(h.startSec + h.playSec / 2)} x2={x(h.startSec + h.playSec / 2)} y1={eTop} y2={kTop + kH} stroke="#f5f4ee" strokeWidth={1} opacity={0.5} />}
+        {h && <line x1={x(h.startSec + h.playSec / 2)} x2={x(h.startSec + h.playSec / 2)} y1={eTop} y2={kTop + kH} stroke="#f3efe7" strokeWidth={1} opacity={0.5} />}
         <rect x={L} y={0} width={plotW} height={H} fill="transparent" onPointerMove={onMove} onPointerLeave={() => setHover(null)} onClick={() => hover != null && onSelect?.(hover)} style={{ cursor: onSelect ? 'pointer' : 'default' }} />
       </svg>
       {h && (

@@ -106,7 +106,7 @@ export function CategoryView({ kind, value }: { kind: CategoryKind; value: strin
               ))}
             </ul>
             <label className="flex min-h-10 items-center gap-3 text-sm">
-              <input type="checkbox" className="h-5 w-5 accent-[#d97757]" checked={withCompatible} onChange={(e) => setWithCompatible(e.target.checked)} />
+              <input type="checkbox" className="h-5 w-5 accent-[#ef6a3a]" checked={withCompatible} onChange={(e) => setWithCompatible(e.target.checked)} />
               Show compatible keys in the list too
             </label>
           </div>

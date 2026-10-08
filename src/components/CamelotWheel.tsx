@@ -62,10 +62,10 @@ export function CamelotWheel({
           const strong = isSel || isHi || count > 0;
           const seg = (
             <g key={key} className={linkable ? 'cursor-pointer transition hover:brightness-125' : undefined}>
-              <path d={sector(num, r1, r2)} fill={keyColor(key)} opacity={isSel ? 1 : isHi ? 0.85 : count ? 0.8 : 0.18} stroke={isSel ? '#f5f4ee' : 'none'} strokeWidth={isSel ? 2 : 0}>
+              <path d={sector(num, r1, r2)} fill={keyColor(key)} opacity={isSel ? 1 : isHi ? 0.85 : count ? 0.8 : 0.18} stroke={isSel ? '#f3efe7' : 'none'} strokeWidth={isSel ? 2 : 0}>
                 <title>{`${key} · ${camelotToMusical(key)}${counts || tracks ? ` — ${count} track${count === 1 ? '' : 's'}` : ''}`}</title>
               </path>
-              <text x={tx} y={ty + (counts && count ? -1 : fs / 3)} fontSize={fs} fontWeight={strong ? 600 : 400} fill={strong ? '#fff' : '#c9c7bd'} opacity={strong ? 1 : 0.6} textAnchor="middle" pointerEvents="none">
+              <text x={tx} y={ty + (counts && count ? -1 : fs / 3)} fontSize={fs} fontWeight={strong ? 600 : 400} fill={strong ? '#fff' : '#bfb9ad'} opacity={strong ? 1 : 0.6} textAnchor="middle" pointerEvents="none">
                 {key}
               </text>
               {counts && count > 0 && (
@@ -87,28 +87,28 @@ export function CamelotWheel({
       {showPath &&
         path.slice(1).map(([x2, y2], i) => {
           const [x1, y1] = path[i];
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#f5f4ee" strokeWidth={2} strokeLinecap="round" opacity={0.3 + (0.6 * (i + 1)) / path.length} pointerEvents="none" />;
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#f3efe7" strokeWidth={2} strokeLinecap="round" opacity={0.3 + (0.6 * (i + 1)) / path.length} pointerEvents="none" />;
         })}
       {showPath && (
         <g pointerEvents="none">
-          <circle cx={path[0][0]} cy={path[0][1]} r={8} fill="#1f1e1d" stroke="#f5f4ee" strokeWidth={2} />
-          <text x={path[0][0]} y={path[0][1] + 3.5} fontSize={9} fontWeight={700} fill="#f5f4ee" textAnchor="middle">
+          <circle cx={path[0][0]} cy={path[0][1]} r={8} fill="#0e0d0c" stroke="#f3efe7" strokeWidth={2} />
+          <text x={path[0][0]} y={path[0][1] + 3.5} fontSize={9} fontWeight={700} fill="#f3efe7" textAnchor="middle">
             1
           </text>
           {path.length > 1 && (
             <>
-              <circle cx={path[path.length - 1][0]} cy={path[path.length - 1][1]} r={9} fill="#f5f4ee" stroke="#1f1e1d" strokeWidth={2} />
-              <text x={path[path.length - 1][0]} y={path[path.length - 1][1] + 3.5} fontSize={9} fontWeight={700} fill="#1f1e1d" textAnchor="middle">
+              <circle cx={path[path.length - 1][0]} cy={path[path.length - 1][1]} r={9} fill="#f3efe7" stroke="#0e0d0c" strokeWidth={2} />
+              <text x={path[path.length - 1][0]} y={path[path.length - 1][1] + 3.5} fontSize={9} fontWeight={700} fill="#0e0d0c" textAnchor="middle">
                 {path.length}
               </text>
             </>
           )}
         </g>
       )}
-      <text x={c} y={c - 3} fontSize={11} fill="#9c9a91" textAnchor="middle" pointerEvents="none">
+      <text x={c} y={c - 3} fontSize={11} fill="#8f897e" textAnchor="middle" pointerEvents="none">
         B = major
       </text>
-      <text x={c} y={c + 12} fontSize={11} fill="#9c9a91" textAnchor="middle" pointerEvents="none">
+      <text x={c} y={c + 12} fontSize={11} fill="#8f897e" textAnchor="middle" pointerEvents="none">
         A = minor
       </text>
     </svg>

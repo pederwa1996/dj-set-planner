@@ -129,7 +129,7 @@ src/
 - [x] Library with manual entry, search, filters, sorting, duplicate detection, backup
 - [x] Import from pasted lists and CSV; online BPM/key lookup
 - [x] Mix engine, set builder, visualisation, gaps and bridge tracks, export
-- [x] Home screen, Browse by category, English UI, new design
+- [x] Home screen, Browse by category, English UI, new design (dark club palette, vinyl logo)
 - [x] Account with username/password and cloud sync between devices (Supabase)
 - [ ] Genre profiles and recommendations from external sources
 - [ ] Audio files: import with tags, BPM/key analysis to double-check values, preview player, Rekordbox/Traktor export

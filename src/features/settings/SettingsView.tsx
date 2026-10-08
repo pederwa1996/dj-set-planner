@@ -56,7 +56,7 @@ export function SettingsView() {
       <div className="card flex flex-col gap-2 p-4">
         <div className="flex items-center gap-3">
           <label className="flex min-h-9 flex-1 items-center gap-3">
-            <input type="checkbox" className="h-5 w-5 accent-[#d97757]" checked={settings.sources[id]} onChange={(e) => save({ ...settings, sources: { ...settings.sources, [id]: e.target.checked } })} />
+            <input type="checkbox" className="h-5 w-5 accent-[#ef6a3a]" checked={settings.sources[id]} onChange={(e) => save({ ...settings, sources: { ...settings.sources, [id]: e.target.checked } })} />
             <span className="font-medium">{title}</span>
           </label>
           <Button size="sm" onClick={() => adapter && test(id, adapter)} disabled={!adapter || t === 'busy'}>
