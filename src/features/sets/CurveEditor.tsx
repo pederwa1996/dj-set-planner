@@ -41,14 +41,14 @@ export function CurveEditor({ curve, onChange }: { curve: EnergyCurve; onChange:
             key={k}
             type="button"
             onClick={() => onChange(presetCurve(k))}
-            className={`min-h-10 rounded-full border px-3 text-sm ${curve.preset === k ? 'border-accent bg-accent/15 text-accent' : 'border-line bg-panel2 text-slate-200 hover:border-accent'}`}
+            className={`min-h-9 rounded-full border px-3 text-[13px] transition ${curve.preset === k ? 'border-accent/50 bg-accent-soft text-accent' : 'border-line text-ink2 hover:border-[#6b6a63] hover:text-ink'}`}
           >
             {CURVE_PRESETS[k].label}
           </button>
         ))}
-        {curve.preset === 'custom' && <span className="inline-flex min-h-10 items-center rounded-full border border-accent px-3 text-sm text-accent">Egen kurve</span>}
+        {curve.preset === 'custom' && <span className="inline-flex min-h-9 items-center rounded-full border border-accent/50 bg-accent-soft px-3 text-[13px] text-accent">Custom</span>}
       </div>
-      <div ref={ref} className="touch-none rounded-lg border border-line bg-panel2">
+      <div ref={ref} className="touch-none rounded-xl border border-line bg-sidebar">
         <svg
           ref={svgRef}
           width={W}
@@ -62,25 +62,25 @@ export function CurveEditor({ curve, onChange }: { curve: EnergyCurve; onChange:
             onChange({ preset: 'custom', points: [...pts, d].sort((a, b) => a.t - b.t) });
           }}
           role="img"
-          aria-label="Energikurve"
+          aria-label="Energy curve"
         >
           {[1, 5, 10].map((e) => (
             <g key={e}>
-              <line x1={P} x2={W - P} y1={y(e)} y2={y(e)} stroke="#2a3142" />
-              <text x={P + 2} y={y(e) - 3} fontSize={10} fill="#8b93a7">
+              <line x1={P} x2={W - P} y1={y(e)} y2={y(e)} stroke="#44433f" />
+              <text x={P + 2} y={y(e) - 3} fontSize={10} fill="#9c9a91">
                 {e}
               </text>
             </g>
           ))}
-          <polyline points={pts.map((p) => `${x(p.t)},${y(p.e)}`).join(' ')} fill="none" stroke="#22d3ee" strokeWidth={2} strokeLinejoin="round" />
+          <polyline points={pts.map((p) => `${x(p.t)},${y(p.e)}`).join(' ')} fill="none" stroke="#d97757" strokeWidth={2} strokeLinejoin="round" />
           {pts.map((p, i) => (
             <circle
               key={i}
               cx={x(p.t)}
               cy={y(p.e)}
               r={drag === i ? 9 : 7}
-              fill="#22d3ee"
-              stroke="#141821"
+              fill="#d97757"
+              stroke="#1f1e1d"
               strokeWidth={2}
               style={{ cursor: 'grab' }}
               onPointerDown={(ev) => {
@@ -92,12 +92,12 @@ export function CurveEditor({ curve, onChange }: { curve: EnergyCurve; onChange:
                 onChange({ preset: 'custom', points: pts.filter((_, k) => k !== i) });
               }}
             >
-              <title>{`${Math.round(p.t * 100)} % inn i settet: energi ${p.e}`}</title>
+              <title>{`${Math.round(p.t * 100)}% into the set: energy ${p.e}`}</title>
             </circle>
           ))}
         </svg>
       </div>
-      <p className="text-xs text-muted">Dra i punktene. Dobbeltklikk på tom flate for nytt punkt, på et punkt for å fjerne det.</p>
+      <p className="text-xs text-muted">Drag the points. Double-click empty space to add a point, or a point to remove it.</p>
     </div>
   );
 }

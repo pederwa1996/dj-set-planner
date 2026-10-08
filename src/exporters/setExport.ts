@@ -13,7 +13,7 @@ export function setToText(tracks: Track[], opts: { numbered?: boolean } = {}): s
 }
 
 export function setToCsv(set: DjSet, tracks: Track[], analysis: SetAnalysis<Track>): string {
-  const rows: (string | number | null)[][] = [['#', 'Start', 'Artist', 'Tittel', 'Versjon', 'BPM', 'Camelot', 'Key', 'Energi', 'Lengde', 'Status', 'Overgang videre', 'Score', 'Notat']];
+  const rows: (string | number | null)[][] = [['#', 'Start', 'Artist', 'Title', 'Version', 'BPM', 'Camelot', 'Key', 'Energy', 'Length', 'Status', 'Next transition', 'Score', 'Note']];
   tracks.forEach((t, i) => {
     const tr = analysis.transitions[i];
     const next = tracks[i + 1];
@@ -28,7 +28,7 @@ export function setToCsv(set: DjSet, tracks: Track[], analysis: SetAnalysis<Trac
       camelotToMusical(t.camelot),
       t.energy,
       formatDuration(t.durationSec),
-      t.status === 'owned' ? 'har fil' : 'må skaffes',
+      t.status === 'owned' ? 'owned' : 'to get',
       tr ? tr.explanation : '',
       tr ? tr.score : '',
       next ? (set.transitionNotes[pairKey(t.id, next.id)] ?? '') : '',

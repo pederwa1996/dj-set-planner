@@ -10,7 +10,7 @@ export interface TransitionScore {
   harmonic: HarmonicResult | null;
   tempo: TempoResult | null;
   energyDelta: number | null;
-  /** f.eks. "8A → 9A: +1 på hjulet · +2 BPM (1,6 %) · energi 6 → 7 — perfekt" */
+  /** e.g. "8A → 9A: +1 on the wheel · +2 BPM (1.6%) · energy 6 → 7 — perfect" */
   explanation: string;
   issues: string[];
 }
@@ -30,11 +30,19 @@ function energyScore(d: number): number {
   return 0.2;
 }
 
+/** Faste problemkoder (brukes også til å finne hull) */
+export const ISSUE = {
+  keyClash: 'key clash',
+  bpmJump: 'big BPM jump',
+  missingKey: 'missing key',
+  missingBpm: 'missing BPM',
+} as const;
+
 export function verdict(score: number): string {
-  if (score >= 90) return 'perfekt';
-  if (score >= 75) return 'god';
+  if (score >= 90) return 'perfect';
+  if (score >= 75) return 'good';
   if (score >= 55) return 'ok';
-  return 'vanskelig';
+  return 'tricky';
 }
 
 export function scoreTransition(a: MixTrack, b: MixTrack, opts: TransitionOptions = {}): TransitionScore {
@@ -48,10 +56,10 @@ export function scoreTransition(a: MixTrack, b: MixTrack, opts: TransitionOption
   if (harmonic) {
     h = harmonic.score;
     parts.push(`${a.camelot} → ${b.camelot}: ${harmonic.label}`);
-    if (harmonic.relation === 'clash') issues.push('dårlig key-overgang');
+    if (harmonic.relation === 'clash') issues.push(ISSUE.keyClash);
   } else {
-    parts.push('ukjent key');
-    issues.push('mangler key');
+    parts.push('unknown key');
+    issues.push(ISSUE.missingKey);
   }
 
   const tempo = a.bpm && b.bpm ? tempoCompatibility(a.bpm, b.bpm, maxPct) : null;
@@ -59,27 +67,27 @@ export function scoreTransition(a: MixTrack, b: MixTrack, opts: TransitionOption
   if (tempo) {
     t = tempo.score;
     parts.push(tempo.label);
-    if (Math.abs(tempo.pct) > maxPct) issues.push('stort BPM-hopp');
+    if (Math.abs(tempo.pct) > maxPct) issues.push(ISSUE.bpmJump);
   } else {
-    parts.push('ukjent BPM');
-    issues.push('mangler BPM');
+    parts.push('unknown BPM');
+    issues.push(ISSUE.missingBpm);
   }
 
   const energyDelta = a.energy != null && b.energy != null ? b.energy - a.energy : null;
   let e = 0.8;
   if (energyDelta != null) {
     e = energyScore(energyDelta);
-    parts.push(`energi ${a.energy} → ${b.energy}`);
-    if (Math.abs(energyDelta) >= 3) issues.push(`brått energihopp (${energyDelta > 0 ? '+' : ''}${energyDelta})`);
+    parts.push(`energy ${a.energy} → ${b.energy}`);
+    if (Math.abs(energyDelta) >= 3) issues.push(`sudden energy jump (${energyDelta > 0 ? '+' : ''}${energyDelta})`);
   }
 
   const score = Math.round(100 * (w.harmonic * h + w.tempo * t + w.energy * e) / (w.harmonic + w.tempo + w.energy));
   let grade: Grade = score >= 75 ? 'good' : score >= 55 ? 'ok' : 'bad';
   // En ren key-kræsj eller et for stort tempohopp er aldri «god»
-  if (grade === 'good' && issues.some((i) => i === 'dårlig key-overgang' || i === 'stort BPM-hopp')) grade = 'ok';
+  if (grade === 'good' && issues.some((i) => i === ISSUE.keyClash || i === ISSUE.bpmJump)) grade = 'ok';
   if (tempo && Math.abs(tempo.pct) > maxPct * 1.5) grade = 'bad';
 
   // Ordet følger karakteren (en nedjustert overgang skal ikke kalles «god»)
-  const word = grade === 'good' ? verdict(score) : grade === 'ok' ? 'ok' : 'vanskelig';
+  const word = grade === 'good' ? verdict(score) : grade === 'ok' ? 'ok' : 'tricky';
   return { score, grade, harmonic, tempo, energyDelta, explanation: `${parts.join(' · ')} — ${word}`, issues };
 }

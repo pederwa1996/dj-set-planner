@@ -29,9 +29,9 @@ export async function createBackup(database: DjDatabase = defaultDb): Promise<Ba
 export async function restoreBackup(data: unknown, mode: 'replace' | 'merge', database: DjDatabase = defaultDb): Promise<number> {
   const b = data as Partial<Backup>;
   if (!b || b.format !== BACKUP_FORMAT || !b.tables || !Array.isArray(b.tables.tracks)) {
-    throw new Error('Filen er ikke en gyldig backup fra DJ Set Planner.');
+    throw new Error('This is not a valid DJ Set Planner backup file.');
   }
-  if ((b.version ?? 0) > BACKUP_VERSION) throw new Error('Backupen er laget av en nyere versjon av appen.');
+  if ((b.version ?? 0) > BACKUP_VERSION) throw new Error('This backup was made by a newer version of the app.');
   // Fyll inn felter som kan mangle i eldre backuper
   const tracks: Track[] = b.tables.tracks.map((t) => {
     const full = { ...emptyTrack(), ...t } as Track;

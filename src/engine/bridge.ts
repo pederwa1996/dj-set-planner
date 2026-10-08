@@ -8,7 +8,7 @@ export interface IdealBridge {
   keys: string[];
   bpm: number | null;
   energy: number | null;
-  /** f.eks. "trenger: 9A eller 8B, ca. 128 BPM, energi 6" */
+  /** e.g. "needs: 9A or 8B, ~128 BPM, energy 6" */
   description: string;
 }
 
@@ -31,8 +31,8 @@ export function idealBridge(a: MixTrack, b: MixTrack): IdealBridge {
 
   const energy = a.energy != null && b.energy != null ? Math.round((a.energy + b.energy) / 2) : (a.energy ?? b.energy ?? null);
 
-  const parts = [keys.length ? keys.slice(0, 3).join(' eller ') : null, bpm ? `ca. ${Math.round(bpm)} BPM` : null, energy != null ? `energi ${energy}` : null].filter(Boolean);
-  return { keys, bpm, energy, description: parts.length ? `trenger: ${parts.join(', ')}` : 'mangler data for å foreslå' };
+  const parts = [keys.length ? keys.slice(0, 3).join(' or ') : null, bpm ? `~${Math.round(bpm)} BPM` : null, energy != null ? `energy ${energy}` : null].filter(Boolean);
+  return { keys, bpm, energy, description: parts.length ? `needs: ${parts.join(', ')}` : 'not enough data to suggest' };
 }
 
 export interface BridgeCandidate<T extends MixTrack> {

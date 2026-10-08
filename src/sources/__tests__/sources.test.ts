@@ -74,7 +74,7 @@ describe('sammenslåing', () => {
     expect(s).toMatchObject({ bpm: 138, camelot: '8A', durationSec: 443, label: 'Vandit', year: 1994 });
     expect(s.from).toMatchObject({ bpm: 'getsongbpm', camelot: 'getsongbpm', durationSec: 'deezer', year: 'musicbrainz' });
     expect(s.info.status).toBe('ok');
-    expect(s.info.notes.join()).toMatch(/bekreftet/);
+    expect(s.info.notes.join()).toMatch(/confirmed/);
   });
   it('flagger half/double time-uenighet som usikkert', () => {
     const s = mergeCandidates(q, [cand({ source: 'getsongbpm', bpm: 87, camelot: '3A' }), cand({ source: 'deezer', bpm: 174 })]);

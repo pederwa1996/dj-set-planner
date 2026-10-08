@@ -1,34 +1,34 @@
-import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Check, Columns3, Download, Globe, KeyRound, ListPlus, Plus, Search, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react';
 import { db } from '../../db/db';
 import type { Track } from '../../db/types';
-import { addTrack, deleteTracks } from '../../db/tracks';
-import { Button, Modal } from '../../components/ui';
+import { addTracks, deleteTracks } from '../../db/tracks';
+import { Button, Chip, EmptyState, IconButton, Modal, PageHeader, Segmented } from '../../components/ui';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { useHotkeys } from '../../lib/useHotkeys';
-import { makeDupKey } from '../../lib/normalize';
-import { activeFilterCount, collectValues, duplicateCounts, emptyFilter, filterTracks, sortTracks, type LibraryFilter, type SortColumn, type SortSpec } from './filter';
-import { FilterPanel } from './FilterPanel';
-import { COLUMNS, DEFAULT_VISIBLE, TrackTable } from './TrackTable';
-import { TrackEditor } from './TrackEditor';
-import { SAMPLE_TRACKS } from './sampleData';
-import { ImportDialog } from '../import/ImportDialog';
-import { startBulkLookup, useBulkLookup } from '../../sources/bulkStore';
+import { href } from '../../lib/router';
 import { useSettings } from '../../lib/settings';
+import { anyDialogOpen, openImport, openTrack } from '../../lib/uiStore';
+import { startBulkLookup, useBulkLookup } from '../../sources/bulkStore';
+import { AddToSetDialog } from '../sets/AddToSetDialog';
+import { collectValues, duplicateCounts, emptyFilter, filterTracks, sortTracks, type LibraryFilter, type SortColumn, type SortSpec } from './filter';
+import { activeFilterChips, FilterPanel } from './FilterPanel';
+import { COLUMNS, DEFAULT_VISIBLE, TrackTable } from './TrackTable';
+import { SAMPLE_TRACKS } from './sampleData';
 
-export function LibraryView({ onOpenSettings }: { onOpenSettings: () => void }) {
+export function LibraryView() {
   const tracks = useLiveQuery(() => db.tracks.toArray(), []);
   const [filter, setFilter] = useLocalStorage<LibraryFilter>('library.filter', emptyFilter);
   const [sort, setSort] = useLocalStorage<SortSpec>('library.sort', { column: 'artist', dir: 'asc' });
-  const [visible, setVisible] = useLocalStorage<SortColumn[]>('library.columns', DEFAULT_VISIBLE);
+  const [visible, setVisible] = useLocalStorage<SortColumn[]>('library.columns.v2', DEFAULT_VISIBLE);
   const [showFilters, setShowFilters] = useLocalStorage('library.showFilters', false);
   const [showColumns, setShowColumns] = useState(false);
-  const [editing, setEditing] = useState<Track | null | undefined>(undefined); // undefined = lukket, null = ny
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<string[] | null>(null);
+  const [addToSet, setAddToSet] = useState<string[] | null>(null);
   const [bulkTag, setBulkTag] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
-  const [importOpen, setImportOpen] = useState(false);
   const bulk = useBulkLookup();
   const [settings] = useSettings();
 
@@ -38,15 +38,8 @@ export function LibraryView({ onOpenSettings }: { onOpenSettings: () => void }) 
   const values = useMemo(() => collectValues(all), [all]);
   const shown = useMemo(() => sortTracks(filterTracks(all, deferredFilter, dupCounts), sort), [all, deferredFilter, dupCounts, sort]);
   const dupTotal = useMemo(() => [...dupCounts.values()].filter((n) => n > 1).reduce((a, b) => a + b, 0), [dupCounts]);
-  const wishlistCount = useMemo(() => all.filter((t) => t.status === 'wishlist').length, [all]);
+  const toGet = useMemo(() => all.filter((t) => t.status === 'wishlist').length, [all]);
   const missingIds = useMemo(() => all.filter((t) => (t.bpm == null || t.camelot == null) && !t.online).map((t) => t.id), [all]);
-
-  const byDupKey = useMemo(() => {
-    const m = new Map<string, Track[]>();
-    for (const t of all) m.set(t.dupKey, [...(m.get(t.dupKey) ?? []), t]);
-    return m;
-  }, [all]);
-  const duplicateOf = useCallback((a: string, ti: string, v: string) => byDupKey.get(makeDupKey(a, ti, v)) ?? [], [byDupKey]);
 
   const onSort = (column: SortColumn) =>
     setSort((s) => (s.column === column ? { column, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { column, dir: column === 'rating' || column === 'energy' || column === 'playCount' ? 'desc' : 'asc' }));
@@ -64,9 +57,7 @@ export function LibraryView({ onOpenSettings }: { onOpenSettings: () => void }) 
   const hotkeys = useMemo(
     () => ({
       '/': () => searchRef.current?.focus(),
-      n: () => setEditing(null),
-      i: () => setImportOpen(true),
-      f: () => setShowFilters((v) => !v),
+      f: () => !anyDialogOpen() && setShowFilters((v) => !v),
       Escape: () => {
         if (document.activeElement === searchRef.current) searchRef.current?.blur();
         else setSelected(new Set());
@@ -74,7 +65,7 @@ export function LibraryView({ onOpenSettings }: { onOpenSettings: () => void }) 
     }),
     [setShowFilters],
   );
-  useHotkeys(hotkeys, editing === undefined && !confirmDelete && !importOpen);
+  useHotkeys(hotkeys, !confirmDelete && !addToSet);
 
   async function bulkUpdate(fn: (t: Track) => Partial<Track>) {
     const now = new Date().toISOString();
@@ -86,153 +77,210 @@ export function LibraryView({ onOpenSettings }: { onOpenSettings: () => void }) 
     });
   }
 
-  if (!tracks) return <p className="p-6 text-muted">Laster bibliotek …</p>;
+  if (!tracks) return null;
 
-  const nFilters = activeFilterCount(filter);
+  const chips = activeFilterChips(filter, setFilter);
+  const notices: { key: string; icon: React.ReactNode; text: React.ReactNode; action?: React.ReactNode }[] = [];
+  if (!settings.getSongBpmKey && all.length)
+    notices.push({
+      key: 'key',
+      icon: <KeyRound size={16} className="text-accent" />,
+      text: 'Add your GetSongBPM key in Settings to look up BPM and key automatically.',
+      action: (
+        <a href={href({ name: 'settings' })} className="text-[13px] text-accent hover:underline">
+          Open settings
+        </a>
+      ),
+    });
+  if (missingIds.length && !bulk.running)
+    notices.push({
+      key: 'missing',
+      icon: <Globe size={16} className="text-tempo" />,
+      text: `${missingIds.length} track${missingIds.length === 1 ? ' is' : 's are'} missing BPM or key.`,
+      action: (
+        <Button size="sm" onClick={() => startBulkLookup(missingIds)}>
+          Look up online
+        </Button>
+      ),
+    });
+  if (dupTotal)
+    notices.push({
+      key: 'dup',
+      icon: <Columns3 size={16} className="text-muted" />,
+      text: `${dupTotal} possible duplicates.`,
+      action: (
+        <button type="button" className="text-[13px] text-ink2 hover:text-ink hover:underline" onClick={() => setFilter({ ...filter, onlyDuplicates: !filter.onlyDuplicates })}>
+          {filter.onlyDuplicates ? 'Show all' : 'Show them'}
+        </button>
+      ),
+    });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-0 flex-1 basis-64">
-          <input
-            ref={searchRef}
-            type="search"
-            className="input w-full pl-10 text-base"
-            placeholder="Søk artist, tittel, label, tagg … eller en key som «8A» / «Am»"
-            value={filter.query}
-            onChange={(e) => setFilter({ ...filter, query: e.target.value })}
-          />
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">⌕</span>
-        </div>
-        <Button onClick={() => setShowFilters(!showFilters)} className={nFilters ? 'border-accent text-accent' : ''}>
-          Filtre{nFilters ? ` (${nFilters})` : ''} <kbd className="hidden text-xs opacity-50 lg:inline">F</kbd>
-        </Button>
-        <Button className="hidden md:inline-flex" onClick={() => setShowColumns(true)}>
-          Kolonner
-        </Button>
-        <Button onClick={() => setImportOpen(true)}>
-          Importer <kbd className="hidden text-xs opacity-50 lg:inline">I</kbd>
-        </Button>
-        <Button variant="primary" onClick={() => setEditing(null)}>
-          + Ny låt <kbd className="hidden text-xs opacity-60 lg:inline">N</kbd>
-        </Button>
-      </div>
-
-      {showFilters && <FilterPanel filter={filter} onChange={setFilter} genres={values.genres} tags={values.tags} />}
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
-        <span>
-          Viser <strong className="text-slate-200">{shown.length}</strong> av {all.length} låter
-        </span>
-        {wishlistCount > 0 && (
-          <button type="button" className="hover:text-slate-200 hover:underline" onClick={() => setFilter({ ...filter, status: filter.status === 'wishlist' ? 'all' : 'wishlist' })}>
-            ⬇ {wishlistCount} må skaffes
-          </button>
-        )}
-        {missingIds.length > 0 && !bulk.running && (
-          <button type="button" className="text-sky-300 hover:underline" onClick={() => startBulkLookup(missingIds)}>
-            🌐 {missingIds.length} mangler BPM/key — hent fra nett
-          </button>
-        )}
-        {!settings.getSongBpmKey && all.length > 0 && (
-          <button type="button" className="text-amber-300 hover:underline" onClick={onOpenSettings}>
-            ⚙ Legg inn GetSongBPM-nøkkel for key-data
-          </button>
-        )}
-        {dupTotal > 0 && (
-          <button type="button" className="text-amber-300 hover:underline" onClick={() => setFilter({ ...filter, onlyDuplicates: !filter.onlyDuplicates })}>
-            ⚠ {dupTotal} mulige duplikater
-          </button>
-        )}
-      </div>
-
-      {selectedIds.length > 0 && (
-        <div className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-accent/50 bg-panel2 p-2 shadow-lg">
-          <span className="px-2 text-sm font-medium">{selectedIds.length} valgt</span>
-          <Button onClick={() => startBulkLookup(selectedIds)} disabled={bulk.running}>
-            🌐 Hent data fra nett
-          </Button>
-          <Button onClick={() => bulkUpdate(() => ({ status: 'owned' }))}>✓ Har filen</Button>
-          <Button onClick={() => bulkUpdate(() => ({ status: 'wishlist' }))}>⬇ Må skaffes</Button>
-          <form
-            className="flex gap-1"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const tag = bulkTag.trim().toLowerCase();
-              if (tag) bulkUpdate((t) => ({ tags: t.tags.includes(tag) ? t.tags : [...t.tags, tag] }));
-              setBulkTag('');
-            }}
-          >
-            <input className="input w-36" placeholder="Legg til tagg" value={bulkTag} onChange={(e) => setBulkTag(e.target.value)} />
-            <Button type="submit">+</Button>
-          </form>
-          <Button variant="danger" onClick={() => setConfirmDelete(selectedIds)}>
-            Slett
-          </Button>
-          <Button variant="ghost" className="ml-auto" onClick={() => setSelected(new Set())}>
-            Fjern valg
-          </Button>
-        </div>
-      )}
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title="Library"
+        subtitle={`${all.length} tracks${toGet ? ` · ${toGet} to get` : ''}`}
+        actions={
+          <>
+            <Button onClick={() => openImport()}>
+              <Upload size={16} /> Import
+            </Button>
+            <Button variant="primary" onClick={() => openTrack(null)}>
+              <Plus size={16} /> Add track
+            </Button>
+          </>
+        }
+      />
 
       {all.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-line px-6 py-16 text-center">
-          <p className="text-lg">Biblioteket er tomt.</p>
-          <p className="max-w-md text-muted">Lim inn en liste med «Artist - Tittel», importer en Spotify-spilleliste (via Exportify-CSV), eller registrer låter én og én. BPM og key hentes fra nett.</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button variant="primary" onClick={() => setImportOpen(true)}>
-              Importer liste / CSV
-            </Button>
-            <Button onClick={() => setEditing(null)}>+ Registrer én låt</Button>
-            <Button
-              onClick={async () => {
-                for (const t of SAMPLE_TRACKS) await addTrack(t);
-              }}
-            >
-              Legg inn {SAMPLE_TRACKS.length} eksempellåter
-            </Button>
-          </div>
-        </div>
-      ) : shown.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-line px-6 py-12 text-center text-muted">
-          Ingen låter matcher søket/filtrene.{' '}
-          <button type="button" className="text-accent hover:underline" onClick={() => setFilter(emptyFilter)}>
-            Nullstill
-          </button>
-        </div>
+        <EmptyState
+          title="Your library is empty"
+          actions={
+            <>
+              <Button variant="primary" onClick={() => openImport()}>
+                <Upload size={16} /> Import a list or CSV
+              </Button>
+              <Button onClick={() => openTrack(null)}>
+                <Plus size={16} /> Add one track
+              </Button>
+              <Button variant="ghost" onClick={() => addTracks(SAMPLE_TRACKS)}>
+                Load {SAMPLE_TRACKS.length} sample tracks
+              </Button>
+            </>
+          }
+        >
+          Paste a list of “Artist - Title”, import a Spotify playlist (via an Exportify CSV), or add tracks one by one. BPM and key are looked up online.
+        </EmptyState>
       ) : (
-        <TrackTable
-          tracks={shown}
-          visible={visible}
-          sort={sort}
-          onSort={onSort}
-          onOpen={(t) => setEditing(t)}
-          selected={selected}
-          onToggleSelect={toggleSelect}
-          onToggleAll={toggleAll}
-          dupCounts={dupCounts}
-        />
+        <>
+          {/* Verktøylinje */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1 basis-72">
+              <Search size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+              <input
+                ref={searchRef}
+                type="search"
+                className="input w-full pl-10"
+                placeholder="Search tracks, artists, tags — or a key like 8A or Am"
+                value={filter.query}
+                onChange={(e) => setFilter({ ...filter, query: e.target.value })}
+              />
+            </div>
+            <Segmented
+              value={filter.status}
+              onChange={(status) => setFilter({ ...filter, status })}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'owned', label: 'Owned' },
+                { value: 'wishlist', label: 'To get' },
+              ]}
+            />
+            <Button onClick={() => setShowFilters(!showFilters)} className={showFilters || chips.length ? 'border-[#6b6a63] text-ink' : ''}>
+              <SlidersHorizontal size={16} /> Filters{chips.length ? ` · ${chips.length}` : ''}
+            </Button>
+            <IconButton label="Columns" className="hidden md:grid" onClick={() => setShowColumns(true)}>
+              <Columns3 size={18} />
+            </IconButton>
+          </div>
+
+          {showFilters && <FilterPanel filter={filter} onChange={setFilter} genres={values.genres} tags={values.tags} />}
+
+          {chips.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {chips.map((c) => (
+                <Chip key={c.key} onRemove={c.remove}>
+                  {c.label}
+                </Chip>
+              ))}
+              <button type="button" className="px-2 text-[13px] text-muted hover:text-ink" onClick={() => setFilter({ ...emptyFilter, query: filter.query, status: filter.status })}>
+                Clear all
+              </button>
+            </div>
+          )}
+
+          {notices.length > 0 && (
+            <div className="card divide-y divide-line/60 px-4">
+              {notices.map((n) => (
+                <div key={n.key} className="flex min-h-12 flex-wrap items-center gap-3 py-2 text-sm text-ink2">
+                  {n.icon}
+                  <span className="flex-1">{n.text}</span>
+                  {n.action}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedIds.length > 0 && (
+            <div className="sticky top-[70px] z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-raised p-2 shadow-xl shadow-black/30 lg:top-3">
+              <span className="px-2 text-sm font-medium">{selectedIds.length} selected</span>
+              <Button size="sm" onClick={() => setAddToSet(selectedIds)}>
+                <ListPlus size={15} /> Add to set
+              </Button>
+              <Button size="sm" onClick={() => startBulkLookup(selectedIds)} disabled={bulk.running}>
+                <Globe size={15} /> Look up
+              </Button>
+              <Button size="sm" onClick={() => bulkUpdate(() => ({ status: 'owned' }))}>
+                <Check size={15} /> Owned
+              </Button>
+              <Button size="sm" onClick={() => bulkUpdate(() => ({ status: 'wishlist' }))}>
+                <Download size={15} /> To get
+              </Button>
+              <form
+                className="flex gap-1"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const tag = bulkTag.trim().toLowerCase();
+                  if (tag) bulkUpdate((t) => ({ tags: t.tags.includes(tag) ? t.tags : [...t.tags, tag] }));
+                  setBulkTag('');
+                }}
+              >
+                <input className="input min-h-9 w-32 py-1 text-[13px]" placeholder="Add tag" aria-label="Add tag to selected" value={bulkTag} onChange={(e) => setBulkTag(e.target.value)} />
+              </form>
+              <Button size="sm" variant="ghost" className="text-bad" onClick={() => setConfirmDelete(selectedIds)}>
+                <Trash2 size={15} /> Delete
+              </Button>
+              <IconButton label="Clear selection" className="ml-auto" onClick={() => setSelected(new Set())}>
+                <X size={17} />
+              </IconButton>
+            </div>
+          )}
+
+          {shown.length === 0 ? (
+            <EmptyState title="No matches">
+              Nothing matches your search and filters.{' '}
+              <button type="button" className="text-accent hover:underline" onClick={() => setFilter(emptyFilter)}>
+                Reset
+              </button>
+            </EmptyState>
+          ) : (
+            <>
+              <TrackTable
+                tracks={shown}
+                visible={visible}
+                sort={sort}
+                onSort={onSort}
+                onOpen={(t) => openTrack(t)}
+                selected={selected}
+                onToggleSelect={toggleSelect}
+                onToggleAll={toggleAll}
+                dupCounts={dupCounts}
+              />
+              {shown.length !== all.length && <p className="text-center text-[13px] text-muted">Showing {shown.length} of {all.length} tracks</p>}
+            </>
+          )}
+        </>
       )}
 
-      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} existing={all} genres={values.genres} tags={values.tags} />
-
-      <TrackEditor
-        open={editing !== undefined}
-        track={editing ?? null}
-        onClose={() => setEditing(undefined)}
-        suggestions={values}
-        duplicateOf={duplicateOf}
-        onDelete={(t) => setConfirmDelete([t.id])}
-      />
+      <AddToSetDialog open={!!addToSet} onClose={() => setAddToSet(null)} trackIds={addToSet ?? []} />
 
       <Modal
         open={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
-        title="Slette låter?"
+        title="Delete tracks?"
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirmDelete(null)}>
-              Avbryt
+              Cancel
             </Button>
             <Button
               variant="danger"
@@ -240,24 +288,23 @@ export function LibraryView({ onOpenSettings }: { onOpenSettings: () => void }) 
                 await deleteTracks(confirmDelete!);
                 setSelected(new Set());
                 setConfirmDelete(null);
-                setEditing(undefined);
               }}
             >
-              Slett {confirmDelete?.length === 1 ? 'låten' : `${confirmDelete?.length} låter`}
+              Delete {confirmDelete?.length === 1 ? 'track' : `${confirmDelete?.length} tracks`}
             </Button>
           </>
         }
       >
-        <p>Dette kan ikke angres. Ta gjerne en backup først (Data-menyen øverst).</p>
+        <p className="text-sm text-ink2">This can’t be undone. Consider downloading a backup first (Settings).</p>
       </Modal>
 
-      <Modal open={showColumns} onClose={() => setShowColumns(false)} title="Synlige kolonner">
-        <div className="grid grid-cols-2 gap-2">
+      <Modal open={showColumns} onClose={() => setShowColumns(false)} title="Columns">
+        <div className="grid grid-cols-2 gap-1">
           {COLUMNS.map((c) => (
-            <label key={c.id} className="flex min-h-11 items-center gap-3 rounded-lg px-2 hover:bg-panel2">
+            <label key={c.id} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm hover:bg-raised">
               <input
                 type="checkbox"
-                className="h-5 w-5 accent-cyan-400"
+                className="h-[18px] w-[18px] accent-[#d97757]"
                 checked={visible.includes(c.id)}
                 onChange={() => setVisible(visible.includes(c.id) ? visible.filter((x) => x !== c.id) : COLUMNS.map((x) => x.id).filter((id) => id === c.id || visible.includes(id)))}
               />

@@ -75,7 +75,7 @@ describe('CSV-import', () => {
   });
 
   it('gir feilmelding uten artist/tittel', () => {
-    expect(importCsv('foo,bar\n1,2').error).toMatch(/artist og tittel/);
+    expect(importCsv('foo,bar\n1,2').error).toMatch(/artist and title/);
   });
 
   it('konverterer Spotify key/mode', () => {

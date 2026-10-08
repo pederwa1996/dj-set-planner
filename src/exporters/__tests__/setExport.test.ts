@@ -20,7 +20,7 @@ it('CSV med overganger og notater', () => {
   const rows = parseCsv(setToCsv(set, [a, b], analyzeSet([a, b], { curve: set.curve })));
   expect(rows[0][0]).toBe('#');
   expect(rows[1].slice(0, 7)).toEqual(['1', '0:00', 'Chicane', 'Saltwater', '', '136', '6A']);
-  expect(rows[1][11]).toMatch(/^6A → 7A: \+1 på hjulet/);
+  expect(rows[1][11]).toMatch(/^6A → 7A: \+1 on the wheel/);
   expect(rows[1][13]).toBe('filter ut bassen');
   expect(rows[2][1]).toBe('6:58');
 });

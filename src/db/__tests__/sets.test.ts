@@ -8,7 +8,7 @@ it('dupliserer og markerer sett som spilt', async () => {
   const s = await createSet('Lørdag', db);
   await saveSet({ ...s, slots: [{ trackId: t.id, locked: false }], poolIds: [t.id] }, db);
   const copy = await duplicateSet(s.id, db);
-  expect(copy!.name).toBe('Lørdag (kopi)');
+  expect(copy!.name).toBe('Lørdag (copy)');
   expect(copy!.slots).toHaveLength(1);
   await markSetPlayed(s.id, new Date('2026-10-10T22:00:00Z'), db);
   const after = await db.tracks.get(t.id);

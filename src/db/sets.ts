@@ -51,7 +51,7 @@ export async function duplicateSet(id: string, database: DjDatabase = defaultDb)
   const s = await database.sets.get(id);
   if (!s) return null;
   const now = new Date().toISOString();
-  const copy: DjSet = { ...structuredClone(s), id: newId(), name: `${s.name} (kopi)`, playedAt: null, createdAt: now, updatedAt: now };
+  const copy: DjSet = { ...structuredClone(s), id: newId(), name: `${s.name} (copy)`, playedAt: null, createdAt: now, updatedAt: now };
   await database.sets.add(copy);
   return copy;
 }

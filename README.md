@@ -1,134 +1,122 @@
 # DJ Set Planner
 
-En lokal webapp for å planlegge og bygge DJ-sets: musikkbibliotek med BPM, key (Camelot), energi og tagger, og (i senere faser) en harmonisk mix-motor som foreslår rekkefølge, finner hull og anbefaler brolåter.
+A personal web app for planning DJ sets — even before you own the audio files. Build a library (from a pasted list, a Spotify playlist via Exportify, or one track at a time), look up BPM and key online, browse by key/genre/tempo/energy, and let a harmonic mix engine suggest the order of your set. Then export a shopping list of what to download.
 
-Alt lagres lokalt i nettleseren (IndexedDB). Ingen innlogging, ingen sky.
+Everything is stored locally in your browser (IndexedDB). No login, no cloud.
 
-## Kjør på Render (ingen installasjon)
+## Run it on Render (no install)
 
-Appen er en statisk side, så den kan ligge gratis på [Render](https://render.com). Repoet har en `render.yaml` som setter opp alt.
+The app is a static site, so it can be hosted for free on [Render](https://render.com). The repo includes a `render.yaml` that sets everything up.
 
-1. Logg inn på Render og velg **New → Blueprint**.
-2. Velg repoet `dj-set-planner` (gi Render tilgang til det hvis det ikke vises).
-3. Trykk **Apply**. Etter et par minutter får du en adresse som `https://dj-set-planner.onrender.com`.
+1. In Render, choose **New → Blueprint**.
+2. Pick the `dj-set-planner` repository (give Render access to it if it doesn't show up).
+3. Click **Apply**. After a couple of minutes you get a URL like `https://dj-set-planner.onrender.com`.
 
-Hver gang det pushes til `main`, bygger Render en ny versjon automatisk.
+Every push to `main` deploys a new version automatically.
 
-> **Om data og personvern:** Render serverer bare selve appen. Låtene, setsene og notatene dine lagres i nettleseren på enheten din, ikke på Render. Andre som åpner adressen ser en tom app, ikke ditt bibliotek.
+> **Data and privacy:** Render only serves the app. Your tracks, sets and notes are stored in the browser on your device, not on Render. Anyone else opening the URL sees an empty app.
 
-## Kjør lokalt
+## Run it locally
 
-Du trenger [Node.js](https://nodejs.org) 20 eller nyere.
+You need [Node.js](https://nodejs.org) 20 or newer.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Åpne adressen Vite skriver ut (vanligvis http://localhost:5173).
+Open the address Vite prints (usually http://localhost:5173). `npm run dev` also serves on your local network, so you can open the **Network** address on your phone (same Wi-Fi).
 
-### På mobilen
+> Data lives in the browser *on each device*. Use **Settings → Download backup** on one device and **Restore** on the other to move your library.
 
-Enklest: åpne Render-adressen på mobilen. Lokalt starter `npm run dev` også serveren på det lokale nettverket; åpne **Network**-adressen Vite skriver ut (f.eks. `http://192.168.1.20:5173`) på mobilen, på samme Wi-Fi.
-
-> **Merk:** Dataene ligger i nettleseren *på hver enhet*. Biblioteket på mobilen er et annet enn det på PC-en. Bruk **Data → Last ned backup** på den ene enheten og **Importer backup** på den andre for å flytte det.
-
-### Andre kommandoer
-
-| Kommando | Hva den gjør |
+| Command | What it does |
 |---|---|
-| `npm test` | Kjører enhetstestene (mix-motor, filtrering, database) |
-| `npm run test:watch` | Tester i watch-modus |
-| `npm run typecheck` | TypeScript-sjekk |
-| `npm run build` | Produksjonsbygg til `dist/` |
-| `npm run preview` | Server produksjonsbygget lokalt |
+| `npm test` | Unit tests (mix engine, filters, importers, lookup, database) |
+| `npm run typecheck` | TypeScript check |
+| `npm run build` | Production build to `dist/` |
+| `npm run preview` | Serve the production build locally |
 
-## Slik får du inn låter (uten lydfiler)
+## Using it
 
-- **Lim inn en liste:** Importer → «Lim inn liste», én låt per linje: `Artist - Tittel (Remix)`.
-- **Fra Spotify:** eksporter spillelisten som CSV på [exportify.net](https://exportify.net) og importer filen. Har filen tempo, key og energi, tas de med.
-- **Enkeltvis:** «+ Ny låt», skriv artist og tittel og trykk «Hent data fra nett».
+**Home** shows your next set, quick actions and what needs attention (tracks to get, uncertain lookups, missing BPM/key/energy).
 
-Importerte låter får status **⬇ Må skaffes** — det blir handlelisten din. Marker dem som **✓ Har filen** når du har lastet dem ned.
+**Getting tracks in (no audio files needed)**
+- **Paste a list:** Import → “Paste a list”, one track per line: `Artist - Title (Remix)`.
+- **From Spotify:** export the playlist as CSV at [exportify.net](https://exportify.net) and import the file. Tempo, key and energy are included if the file has them.
+- **One at a time:** “Add track”, type artist and title, press “Look up online”.
 
-### Data fra nett
+Imported tracks are marked **To get** — that becomes your shopping list. Mark them **Owned** once downloaded.
 
-| Kilde | Gir | Krever |
+**Online lookup**
+
+| Source | Gives | Needs |
 |---|---|---|
-| [GetSongBPM](https://getsongbpm.com/api) | BPM og key | Gratis API-nøkkel — legg den inn under ⚙ Innstillinger |
-| Deezer | Lengde, år, label, iblant BPM | Ingenting |
-| MusicBrainz | Lengde, første utgivelsesår | Ingenting |
+| [GetSongBPM](https://getsongbpm.com/api) | BPM and key | Free API key — paste it in Settings |
+| Deezer | Length, year, label, sometimes BPM | Nothing |
+| MusicBrainz | Length, first release year | Nothing |
 
-- Sikre treff fyller inn tomme felter automatisk. Det du har skrevet inn selv, overskrives aldri.
-- Usikre treff (annen remix, uenighet om BPM, half/double time) merkes **sjekk** og må bekreftes i låtskjemaet.
-- Energi finnes ikke i noen gratis kilde, så den setter du selv (eller får fra Exportify hvis filen har den).
-- Kallene går via `/api/...` på samme domene (proxy i `render.yaml` og `vite.config.ts`) for å unngå CORS-problemer.
+Confident matches fill in empty fields automatically; your own values are never overwritten. Uncertain matches (another remix, BPM disagreement, half/double time) are flagged **check**. Calls go through `/api/...` on the same domain (proxy in `render.yaml` and `vite.config.ts`) to avoid CORS issues.
 
-## Bygge et set
+**Browse** — explore by key (clickable Camelot wheel), genre, tempo range, energy, tags, mood and decade. Click any key badge anywhere in the app to see every track in that key and the keys that mix well with it (±1, relative, diagonal, energy boosts).
 
-1. **Sets → ＋ Nytt set.** Sett ønsket lengde (f.eks. 60 min) og velg energikurve — eller dra i punktene for å tegne din egen.
-2. **＋ Legg til låter** i potten (søk, filtrer på BPM/sjanger/status, «Legg til alle viste»).
-3. **⚡ Bygg rekkefølge.** Motoren gir tre forskjellige forslag; velg ett.
-4. Juster for hånd: dra rader (desktop) eller bruk ↑/↓, 🔒 lås låter til plassen sin (første/siste/fast plass) og bygg på nytt. **Ctrl+Z** angrer.
-5. Hver overgang får score, farge, ikon og forklaring (f.eks. «8A → 9A: +1 på hjulet · +2 BPM (1,6 %) · energi 6 → 7 — perfekt»). Røde/gule overganger har **🔎 Finn brolåt**.
-6. **⇩ Eksport:** handleliste med lenker til Beatport/Bandcamp/Traxsource/YouTube/Spotify, liste for Spotify (via TuneMyMusic/Soundiiz), CSV og jukselapp for utskrift/PDF.
+**Building a set**
+1. **New set**, then add tracks to its pool (from the library, or “Add to a set” from any Browse page).
+2. **Build order** — the engine returns three different options; pick one.
+3. Fine-tune: drag rows (desktop) or use ↑/↓, lock tracks to their position, rebuild around them. **Ctrl+Z** undoes.
+4. Every transition gets a score, an icon and an explanation, e.g. “8A → 9A: +1 on the wheel · +2 BPM (1.6%) · energy 6 → 7 — perfect”. Weak ones offer **Find bridge track**.
+5. **Export:** shopping list with Beatport/Bandcamp/Traxsource/YouTube/Spotify links, a list for Spotify (via TuneMyMusic/Soundiiz), CSV, and a printable cheat sheet.
 
-Mix-motoren ligger i `src/engine/` (ren TypeScript, enhetstestet):
+## Keyboard shortcuts
 
-| Fil | Gjør |
+| Key | Action |
 |---|---|
-| `camelot.ts` | Key ⇄ Camelot, harmonisk kompatibilitet (samme, ±1, relativ, diagonal, +2/+7 energiløft) |
-| `tempo.ts` | BPM-endring i prosent, half/double time (87 ↔ 174) |
-| `transition.ts` | Samlet overgangsscore (key 50 %, tempo 35 %, energi 15 %) med forklaring |
-| `energy.ts` | Energikurver (forhåndsvalg og egne punkter) |
-| `sequencer.ts` | Rekkefølge: beam search + lokal forbedring, låste posisjoner, ønsket lengde, artistavstand, alternativer |
-| `analysis.ts` | Starttider, hull, advarsler (samme artist, spilt nylig, manglende data), toppen av settet |
-| `bridge.ts` | Ideell brolåt og rangering av kandidater |
+| `N` | New track |
+| `I` | Import tracks |
+| `/` | Search the library |
+| `F` | Show / hide library filters |
+| `A` / `B` / `E` | In a set: add tracks / build order / export |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | In a set: undo / redo |
+| `?` | Show all shortcuts |
 
-## Hurtigtaster
+## Mix engine
 
-| Tast | Handling |
+`src/engine/` is plain TypeScript with no React/DOM and full unit tests:
+
+| File | Does |
 |---|---|
-| `/` | Søk i biblioteket |
-| `N` | Ny låt |
-| `I` | Importer liste/CSV |
-| `F` | Vis/skjul filtre |
-| `Esc` | Lukk dialog / fjern valg |
-| `Ctrl+Enter` | Lagre låt |
-| `A` / `B` / `E` | I et set: legg til låter / bygg rekkefølge / eksport |
-| `Ctrl+Z` / `Ctrl+Shift+Z` | I et set: angre / gjør om |
-| `?` | Vis hurtigtastene |
+| `camelot.ts` | Key ⇄ Camelot conversion, harmonic compatibility (same, ±1, relative, diagonal, +2/+7 energy boost) |
+| `tempo.ts` | BPM change in percent, half/double time (87 ↔ 174) |
+| `transition.ts` | Combined transition score (key 50%, tempo 35%, energy 15%) with explanation |
+| `energy.ts` | Energy curves (presets and custom points) |
+| `sequencer.ts` | Ordering: beam search + local improvement, locked positions, target length, artist spacing, alternatives |
+| `analysis.ts` | Start times, gaps, warnings (same artist, played recently, missing data), peak of the set |
+| `bridge.ts` | Ideal bridge track and ranking of candidates |
 
-## Søketips
-
-- Søket leter i artist, tittel, versjon, label, sjanger, stemning, tagger og notater, og ignorerer aksenter (`royksopp` finner Röyksopp).
-- Skriver du en key (`8A`, `Am`, `A minor`, `F#m`, `1m`), filtreres det på den keyen.
-
-## Mappestruktur
+## Project structure
 
 ```
 src/
-  engine/          Mix-motoren: ren TypeScript uten React/DOM, fullt enhetstestet
-  db/              Dexie/IndexedDB: skjema, låter, sets, backup
-  importers/       Innlimt liste og CSV (Exportify, TuneMyMusic, regneark)
-  sources/         Oppslag på nett: GetSongBPM, Deezer, MusicBrainz (utbyttbare adaptere)
-  exporters/       Tekst, CSV og kjøpslenker for sets
+  engine/          Mix engine (pure TypeScript, unit-tested)
+  db/              Dexie/IndexedDB: schema, tracks, sets, backup
+  importers/       Pasted lists and CSV (Exportify, TuneMyMusic, spreadsheets)
+  sources/         Online lookup adapters: GetSongBPM, Deezer, MusicBrainz
+  exporters/       Text, CSV and shop links for sets
+  components/      Shared UI (buttons, dialogs, badges, Camelot wheel, track rows)
+  lib/             Router, settings, hooks, normalisation
   features/
-    library/       Biblioteket: tabell, filtre, søk, sortering, redigering
-    import/        Importdialogen
-    sets/          Set-byggeren, grafer, Camelot-hjul, brolåter, eksport
-    settings/      Innstillinger, API-nøkkel og backup
-  components/      Felles UI-komponenter
-  lib/             Hjelpere (normalisering, duplikatnøkler, hooks)
+    home/          Home screen
+    library/       Library table, filters, track editor, online lookup panel
+    browse/        Browse page and category pages (key, genre, BPM, energy …)
+    import/        Import dialog
+    sets/          Set list and set builder (chart, wheel, bridges, export)
+    settings/      Settings page (API key, backup)
 ```
 
 ## Status
 
-Planen er lagt om for å kunne planlegge et set uten lydfiler:
-
-- [x] **Fase 1:** Prosjektoppsett, database, bibliotek med manuell registrering, søk, filtrering, sortering, duplikatmerking, JSON-backup
-- [x] **Fase 2:** Import av innlimt liste og CSV (Exportify/TuneMyMusic/regneark), oppslag av BPM/key på nett (GetSongBPM, Deezer, MusicBrainz)
-- [x] **Fase 3:** Mix-motoren, set-byggeren, visualisering og eksport (handleliste med kjøpslenker, tekst for Spotify, jukselapp)
-- [x] **Fase 4:** Hull-markering og brolåt-forslag
-- [ ] **Fase 5:** Sjangerprofiler og anbefalinger
-- [ ] **Fase 6:** Lydfiler: import med tagger, BPM/key-analyse for å dobbeltsjekke verdiene, forhåndslytting, Rekordbox/Traktor
+- [x] Library with manual entry, search, filters, sorting, duplicate detection, backup
+- [x] Import from pasted lists and CSV; online BPM/key lookup
+- [x] Mix engine, set builder, visualisation, gaps and bridge tracks, export
+- [x] Home screen, Browse by category, English UI, new design
+- [ ] Genre profiles and recommendations from external sources
+- [ ] Audio files: import with tags, BPM/key analysis to double-check values, preview player, Rekordbox/Traktor export

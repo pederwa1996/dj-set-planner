@@ -51,7 +51,7 @@ export function getSongBpmAdapter(apiKey: string): SourceAdapter {
   return {
     id: 'getsongbpm',
     async search(q, signal) {
-      if (!apiKey) throw new MissingKeyError('Mangler API-nøkkel for GetSongBPM (legg den inn under Innstillinger).');
+      if (!apiKey) throw new MissingKeyError('Missing GetSongBPM API key (add it in Settings).');
       const params = `/search/?api_key=${encodeURIComponent(apiKey)}&type=both&limit=10&lookup=${encodeURIComponent(`song:${q.title} artist:${q.artist}`)}`;
       await limit();
       let results = parseGetSongBpmSearch(await fetchViaProxy(PROXY + params, DIRECT + params, signal), q);

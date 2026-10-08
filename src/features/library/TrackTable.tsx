@@ -1,73 +1,123 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import type { Track } from '../../db/types';
-import { EnergyBadge, KeyBadge, Stars } from '../../components/ui';
+import { TrackRow } from '../../components/TrackRow';
+import { EnergyBadge, KeyBadge, Stars, StatusPill, fmtDate } from '../../components/ui';
 import { formatDuration } from '../../lib/normalize';
+import { href } from '../../lib/router';
 import { needsCheck, type SortColumn, type SortSpec } from './filter';
 
-/** Liten markering når BPM/key kommer fra nett, eller oppslaget må sjekkes */
-function OnlineMark({ t, field }: { t: Track; field: 'bpm' | 'camelot' }) {
-  if (t.sources[field] === 'online') return <span className="ml-1 text-xs text-sky-400" title={`Fra nett: ${t.online?.sources.join(', ') ?? ''}`}>●</span>;
-  if (t.sources[field] === 'import') return <span className="ml-1 text-xs text-violet-400" title="Fra importert fil">●</span>;
+/** Liten prikk når BPM/key kommer fra nett eller importert fil */
+function SourceDot({ t, field }: { t: Track; field: 'bpm' | 'camelot' }) {
+  const s = t.sources[field];
+  if (s === 'online') return <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-tempo align-middle" title={`From online lookup: ${t.online?.sources.join(', ') ?? ''}`} />;
+  if (s === 'import') return <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-muted align-middle" title="From imported file" />;
   return null;
 }
 
 export function StatusBadges({ t, isDup }: { t: Track; isDup: boolean }) {
   return (
     <>
-      {isDup && <span className="rounded bg-amber-700/60 px-1.5 py-0.5 text-xs text-amber-100" title="Samme artist, tittel og versjon finnes flere ganger">duplikat</span>}
+      {isDup && (
+        <span className="rounded-md bg-raised px-1.5 py-0.5 text-[11px] text-ink2" title="Same artist, title and version exists more than once">
+          duplicate
+        </span>
+      )}
       {needsCheck(t) && (
-        <span className="rounded bg-orange-800/70 px-1.5 py-0.5 text-xs text-orange-100" title={t.online?.notes.join('\n')}>
-          {t.online?.status === 'notfound' ? 'ikke funnet' : 'sjekk'}
+        <span className="rounded-md bg-ok/15 px-1.5 py-0.5 text-[11px] text-ok" title={t.online?.notes.join('\n')}>
+          {t.online?.status === 'notfound' ? 'not found' : 'check'}
         </span>
       )}
     </>
   );
 }
 
+const cat = (kind: 'genre' | 'tag', value: string, label: ReactNode) => (
+  <a href={href({ name: 'category', kind, value })} onClick={(e) => e.stopPropagation()} className="hover:text-ink hover:underline">
+    {label}
+  </a>
+);
+
 export interface ColumnDef {
   id: SortColumn;
   label: string;
   className?: string;
-  render: (t: Track) => ReactNode;
+  render: (t: Track, isDup: boolean) => ReactNode;
 }
 
-const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('no') : '');
-
 export const COLUMNS: ColumnDef[] = [
-  { id: 'artist', label: 'Artist', className: 'min-w-36 font-medium', render: (t) => t.artist },
-  { id: 'title', label: 'Tittel', className: 'min-w-44', render: (t) => t.title },
-  { id: 'version', label: 'Versjon', className: 'min-w-28 text-slate-300', render: (t) => t.version },
-  { id: 'bpm', label: 'BPM', className: 'text-right tabular-nums', render: (t) => (t.bpm != null ? <>{t.bpm.toFixed(t.bpm % 1 ? 2 : 0)}<OnlineMark t={t} field="bpm" /></> : '') },
-  { id: 'camelot', label: 'Key', render: (t) => <span className="inline-flex items-center"><KeyBadge camelot={t.camelot} /><OnlineMark t={t} field="camelot" /></span> },
-  { id: 'energy', label: 'Energi', className: 'text-center', render: (t) => <EnergyBadge value={t.energy} /> },
-  { id: 'genre', label: 'Sjanger', render: (t) => t.genre },
-  { id: 'subgenre', label: 'Undersjanger', render: (t) => t.subgenre },
+  {
+    id: 'title',
+    label: 'Track',
+    className: 'min-w-60',
+    render: (t, isDup) => (
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-ink">
+            {t.title}
+            {t.version && <span className="text-muted"> · {t.version}</span>}
+          </span>
+          <StatusBadges t={t} isDup={isDup} />
+        </div>
+        <div className="truncate text-[13px] text-muted">{t.artist}</div>
+      </div>
+    ),
+  },
+  { id: 'artist', label: 'Artist', className: 'min-w-32', render: (t) => t.artist },
+  { id: 'version', label: 'Version', className: 'min-w-28 text-ink2', render: (t) => t.version },
+  {
+    id: 'bpm',
+    label: 'BPM',
+    className: 'text-right tabular-nums',
+    render: (t) =>
+      t.bpm != null ? (
+        <>
+          {t.bpm.toFixed(t.bpm % 1 ? 1 : 0)}
+          <SourceDot t={t} field="bpm" />
+        </>
+      ) : (
+        <span className="text-muted">–</span>
+      ),
+  },
+  {
+    id: 'camelot',
+    label: 'Key',
+    render: (t) => (
+      <span className="inline-flex items-center">
+        <KeyBadge camelot={t.camelot} />
+        <SourceDot t={t} field="camelot" />
+      </span>
+    ),
+  },
+  { id: 'energy', label: 'Energy', className: 'text-center', render: (t) => <EnergyBadge value={t.energy} /> },
+  { id: 'genre', label: 'Genre', className: 'text-ink2', render: (t) => (t.genre ? cat('genre', t.genre, t.genre) : '') },
+  { id: 'subgenre', label: 'Subgenre', className: 'text-ink2', render: (t) => (t.subgenre ? cat('genre', t.subgenre, t.subgenre) : '') },
   {
     id: 'tags',
-    label: 'Tagger',
+    label: 'Tags',
     className: 'min-w-32',
     render: (t) => (
       <span className="flex flex-wrap gap-1">
         {t.tags.map((x) => (
-          <span key={x} className="rounded bg-panel2 px-1.5 py-0.5 text-xs text-slate-300">
+          <a key={x} href={href({ name: 'category', kind: 'tag', value: x })} onClick={(e) => e.stopPropagation()} className="rounded-md bg-raised px-1.5 py-0.5 text-[11px] text-ink2 hover:text-ink">
             {x}
-          </span>
+          </a>
         ))}
       </span>
     ),
   },
-  { id: 'rating', label: 'Vurdering', render: (t) => (t.rating ? <Stars value={t.rating} size="sm" /> : '') },
-  { id: 'durationSec', label: 'Lengde', className: 'text-right tabular-nums', render: (t) => formatDuration(t.durationSec) },
-  { id: 'label', label: 'Label', render: (t) => t.label },
-  { id: 'year', label: 'År', className: 'tabular-nums', render: (t) => t.year ?? '' },
-  { id: 'mood', label: 'Stemning', render: (t) => t.mood },
-  { id: 'playCount', label: 'Spilt', className: 'text-right tabular-nums', render: (t) => t.playCount || '' },
-  { id: 'lastPlayedAt', label: 'Spilt sist', render: (t) => fmtDate(t.lastPlayedAt) },
-  { id: 'status', label: 'Status', render: (t) => (t.status === 'wishlist' ? <span className="whitespace-nowrap text-amber-300">⬇ skaffes</span> : <span className="whitespace-nowrap text-muted">✓ har fil</span>) },
-  { id: 'createdAt', label: 'Lagt til', render: (t) => fmtDate(t.createdAt) },
+  { id: 'rating', label: 'Rating', render: (t) => (t.rating ? <Stars value={t.rating} size="sm" /> : '') },
+  { id: 'durationSec', label: 'Time', className: 'text-right tabular-nums text-ink2', render: (t) => formatDuration(t.durationSec) },
+  { id: 'label', label: 'Label', className: 'text-ink2', render: (t) => t.label },
+  { id: 'year', label: 'Year', className: 'tabular-nums text-ink2', render: (t) => t.year ?? '' },
+  { id: 'mood', label: 'Mood', className: 'text-ink2', render: (t) => t.mood },
+  { id: 'playCount', label: 'Played', className: 'text-right tabular-nums text-ink2', render: (t) => t.playCount || '' },
+  { id: 'lastPlayedAt', label: 'Last played', className: 'text-ink2', render: (t) => fmtDate(t.lastPlayedAt) },
+  { id: 'status', label: 'Status', render: (t) => <StatusPill status={t.status} /> },
+  { id: 'createdAt', label: 'Added', className: 'text-ink2', render: (t) => fmtDate(t.createdAt) },
 ];
 
-export const DEFAULT_VISIBLE: SortColumn[] = ['artist', 'title', 'version', 'bpm', 'camelot', 'energy', 'genre', 'tags', 'rating', 'durationSec', 'status'];
+export const DEFAULT_VISIBLE: SortColumn[] = ['title', 'bpm', 'camelot', 'energy', 'genre', 'durationSec', 'status'];
 
 const PAGE = 150;
 
@@ -112,56 +162,34 @@ export function TrackTable({
   const rows = tracks.slice(0, limit);
   const allSelected = tracks.length > 0 && tracks.every((t) => selected.has(t.id));
   const isDup = (t: Track) => (dupCounts.get(t.dupKey) ?? 0) > 1;
+  const check = (id: string) => <input type="checkbox" className="h-[18px] w-[18px] accent-[#d97757]" checked={selected.has(id)} onChange={() => onToggleSelect(id)} onClick={(e) => e.stopPropagation()} aria-label="Select" />;
 
   return (
     <>
-      {/* Mobil: kort */}
-      <ul className="flex flex-col gap-2 md:hidden">
+      {/* Mobil: liste */}
+      <div className="card divide-y divide-line/60 p-1.5 md:hidden">
         {rows.map((t) => (
-          <li key={t.id} className={`flex items-stretch gap-2 rounded-xl border bg-panel ${selected.has(t.id) ? 'border-accent' : 'border-line'}`}>
-            <label className="flex w-11 shrink-0 items-center justify-center">
-              <input type="checkbox" className="h-5 w-5 accent-cyan-400" checked={selected.has(t.id)} onChange={() => onToggleSelect(t.id)} aria-label="Velg" />
-            </label>
-            <button type="button" className="flex min-w-0 flex-1 items-center gap-3 py-3 pr-3 text-left" onClick={() => onOpen(t)}>
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">
-                  {t.title}
-                  {t.version && <span className="text-slate-400"> ({t.version})</span>}
-                </div>
-                <div className="truncate text-sm text-muted">
-                  {t.artist}
-                  {t.genre && ` · ${t.genre}`}
-                </div>
-                <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
-                  <StatusBadges t={t} isDup={isDup(t)} />
-                  {t.status === 'wishlist' && <span className="rounded bg-panel2 px-1.5 py-0.5 text-amber-300">⬇ skaffes</span>}
-                </div>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className="tabular-nums font-semibold">{t.bpm?.toFixed(t.bpm % 1 ? 1 : 0) ?? '–'}</span>
-                <div className="flex items-center gap-1">
-                  <KeyBadge camelot={t.camelot} showMusical={false} />
-                  <EnergyBadge value={t.energy} />
-                </div>
-              </div>
-            </button>
-          </li>
+          <TrackRow key={t.id} t={t} leading={<label className="grid h-10 w-7 shrink-0 place-items-center">{check(t.id)}</label>} badges={<StatusBadges t={t} isDup={isDup(t)} />} />
         ))}
-      </ul>
+      </div>
 
       {/* Desktop: tabell */}
-      <div className="hidden overflow-x-auto rounded-xl border border-line md:block">
+      <div className="card hidden overflow-x-auto md:block">
         <table className="w-full border-collapse text-sm">
-          <thead className="sticky top-0 z-10 bg-panel2 text-left">
-            <tr>
-              <th className="w-11 px-2">
-                <input type="checkbox" className="h-5 w-5 accent-cyan-400" checked={allSelected} onChange={onToggleAll} aria-label="Velg alle" />
+          <thead className="text-left">
+            <tr className="border-b border-line/70">
+              <th className="w-12 pl-4">
+                <input type="checkbox" className="h-[18px] w-[18px] accent-[#d97757]" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
               </th>
               {cols.map((c) => (
-                <th key={c.id} className="whitespace-nowrap p-0 font-medium">
-                  <button type="button" onClick={() => onSort(c.id)} className={`flex min-h-11 w-full items-center gap-1 px-3 hover:text-accent ${sort.column === c.id ? 'text-accent' : 'text-slate-300'}`}>
+                <th key={c.id} className="whitespace-nowrap p-0 font-normal" aria-sort={sort.column === c.id ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+                  <button
+                    type="button"
+                    onClick={() => onSort(c.id)}
+                    className={`flex min-h-11 w-full items-center gap-1 px-3 text-[13px] transition hover:text-ink ${c.className?.includes('text-right') ? 'justify-end' : c.className?.includes('text-center') ? 'justify-center' : ''} ${sort.column === c.id ? 'text-ink' : 'text-muted'}`}
+                  >
                     {c.label}
-                    <span className="text-xs">{sort.column === c.id ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</span>
+                    {sort.column === c.id && (sort.dir === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />)}
                   </button>
                 </th>
               ))}
@@ -169,22 +197,11 @@ export function TrackTable({
           </thead>
           <tbody>
             {rows.map((t) => (
-              <tr
-                key={t.id}
-                onClick={() => onOpen(t)}
-                className={`cursor-pointer border-t border-line hover:bg-panel2 ${selected.has(t.id) ? 'bg-accent/10' : ''}`}
-              >
-                <td className="px-2" onClick={(e) => e.stopPropagation()}>
-                  <input type="checkbox" className="h-5 w-5 accent-cyan-400" checked={selected.has(t.id)} onChange={() => onToggleSelect(t.id)} aria-label="Velg" />
-                </td>
+              <tr key={t.id} onClick={() => onOpen(t)} className={`cursor-pointer border-b border-line/40 transition last:border-0 hover:bg-raised/50 ${selected.has(t.id) ? 'bg-accent-soft' : ''}`}>
+                <td className="pl-4">{check(t.id)}</td>
                 {cols.map((c) => (
-                  <td key={c.id} className={`px-3 py-2 ${c.className ?? ''}`}>
-                    {c.render(t)}
-                    {c.id === 'title' && (
-                      <span className="ml-2 inline-flex gap-1">
-                        <StatusBadges t={t} isDup={isDup(t)} />
-                      </span>
-                    )}
+                  <td key={c.id} className={`max-w-[28rem] px-3 py-2.5 ${c.className ?? ''}`}>
+                    {c.render(t, isDup(t))}
                   </td>
                 ))}
               </tr>
@@ -193,7 +210,7 @@ export function TrackTable({
         </table>
       </div>
       <div ref={sentinel} />
-      {limit < tracks.length && <p className="py-4 text-center text-sm text-muted">Laster flere …</p>}
+      {limit < tracks.length && <p className="py-4 text-center text-sm text-muted">Loading more…</p>}
     </>
   );
 }

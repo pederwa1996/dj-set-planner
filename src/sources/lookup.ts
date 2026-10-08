@@ -55,12 +55,12 @@ export function mergeCandidates(_q: LookupQuery, candidates: Candidate[]): Sugge
     bpm = gs.bpm;
     from.bpm = 'getsongbpm';
     if (dz?.bpm) {
-      if (close(gs.bpm, dz.bpm, 0.02)) notes.push(`BPM bekreftet av Deezer (${dz.bpm})`);
+      if (close(gs.bpm, dz.bpm, 0.02)) notes.push(`BPM confirmed by Deezer (${dz.bpm})`);
       else if (close(gs.bpm * 2, dz.bpm, 0.03) || close(gs.bpm, dz.bpm * 2, 0.03)) {
-        notes.push(`Half/double time-uenighet: GetSongBPM ${gs.bpm}, Deezer ${dz.bpm}`);
+        notes.push(`Half/double-time mismatch: GetSongBPM ${gs.bpm}, Deezer ${dz.bpm}`);
         uncertain = true;
       } else {
-        notes.push(`Uenige om BPM: GetSongBPM ${gs.bpm}, Deezer ${dz.bpm}`);
+        notes.push(`Sources disagree on BPM: GetSongBPM ${gs.bpm}, Deezer ${dz.bpm}`);
         uncertain = true;
       }
     }
@@ -94,11 +94,11 @@ export function mergeCandidates(_q: LookupQuery, candidates: Candidate[]): Sugge
   const best = good[0];
   const confidence = best?.confidence ?? 0;
   if (best && confidence < AUTO_APPLY_CONFIDENCE) {
-    notes.push(`Usikkert treff (${Math.round(confidence * 100)} %): ${best.artist} – ${best.title}${best.version ? ` (${best.version})` : ''}`);
+    notes.push(`Uncertain match (${Math.round(confidence * 100)}%): ${best.artist} – ${best.title}${best.version ? ` (${best.version})` : ''}`);
     uncertain = true;
   }
-  if (best && !bpm) notes.push('Fant låten, men ingen BPM');
-  if (best && !camelot) notes.push(getSettings().getSongBpmKey ? 'Fant ingen key' : 'Key krever GetSongBPM-nøkkel (Innstillinger)');
+  if (best && !bpm) notes.push('Found the track, but no BPM');
+  if (best && !camelot) notes.push(getSettings().getSongBpmKey ? 'No key found' : 'Key needs a GetSongBPM API key (Settings)');
 
   const status: OnlineInfo['status'] = !best ? 'notfound' : uncertain ? 'uncertain' : 'ok';
   const usedSources = Array.from(new Set(Object.values(from))).map((s) => SOURCE_NAMES[s]);
@@ -188,7 +188,7 @@ export function suggestionFromCandidate(c: Candidate): Suggestion {
       matched: `${c.artist} – ${c.title}${c.version ? ` (${c.version})` : ''}`,
       confidence: c.confidence,
       sources: [SOURCE_NAMES[c.source]],
-      notes: ['Valgt manuelt'],
+      notes: ['Picked manually'],
     },
   };
 }

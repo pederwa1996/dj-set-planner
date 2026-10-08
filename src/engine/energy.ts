@@ -12,9 +12,9 @@ export interface EnergyCurve {
 }
 
 export const CURVE_PRESETS: Record<CurvePreset, { label: string; points: CurvePoint[] }> = {
-  build: { label: 'Gradvis oppbygning', points: [{ t: 0, e: 3 }, { t: 1, e: 9 }] },
+  build: { label: 'Gradual build', points: [{ t: 0, e: 3 }, { t: 1, e: 9 }] },
   'warmup-peak-close': {
-    label: 'Warm-up → peak → avslutning',
+    label: 'Warm-up → peak → close',
     points: [
       { t: 0, e: 3 },
       { t: 0.25, e: 5 },
@@ -24,7 +24,7 @@ export const CURVE_PRESETS: Record<CurvePreset, { label: string; points: CurvePo
     ],
   },
   waves: {
-    label: 'Bølger',
+    label: 'Waves',
     points: [
       { t: 0, e: 4 },
       { t: 0.2, e: 7 },

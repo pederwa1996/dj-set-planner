@@ -22,7 +22,7 @@ async function get<T>(path: string): Promise<T> {
     data = await jsonp<T>(`${DIRECT}${path}${path.includes('?') ? '&' : '?'}output=jsonp`);
   }
   const err = (data as Obj | null)?.error as Obj | undefined;
-  if (err) throw new Error(`Deezer: ${String(err.message ?? 'feil')}`);
+  if (err) throw new Error(`Deezer: ${String(err.message ?? 'error')}`);
   return data;
 }
 

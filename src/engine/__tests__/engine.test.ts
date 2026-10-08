@@ -16,7 +16,7 @@ describe('tempo', () => {
     expect(r.delta).toBe(2);
     expect(r.pct).toBeCloseTo(1.587, 2);
     expect(r.score).toBe(0.95);
-    expect(r.label).toBe('+2 BPM (1,6 %)');
+    expect(r.label).toBe('+2 BPM (1.6%)');
   });
   it('half/double time', () => {
     expect(tempoCompatibility(174, 87).mode).toBe('half');
@@ -27,7 +27,7 @@ describe('tempo', () => {
   it('stort hopp gir lav score', () => {
     const r = tempoCompatibility(124, 140);
     expect(r.score).toBeLessThan(0.3);
-    expect(r.label).toMatch(/stort tempohopp/);
+    expect(r.label).toMatch(/big tempo jump/);
   });
 });
 
@@ -35,24 +35,24 @@ describe('overganger', () => {
   it('8A → 9A med +2 BPM er perfekt eller god, med forklaring', () => {
     const s = scoreTransition(tr({ camelot: '8A', bpm: 126, energy: 6 }), tr({ camelot: '9A', bpm: 128, energy: 7 }));
     expect(s.grade).toBe('good');
-    expect(s.explanation).toBe('8A → 9A: +1 på hjulet · +2 BPM (1,6 %) · energi 6 → 7 — perfekt');
+    expect(s.explanation).toBe('8A → 9A: +1 on the wheel · +2 BPM (1.6%) · energy 6 → 7 — perfect');
   });
   it('key-kræsj blir aldri «god»', () => {
     const s = scoreTransition(tr({ camelot: '8A' }), tr({ camelot: '2B' }));
     expect(s.grade).not.toBe('good');
-    expect(s.issues).toContain('dårlig key-overgang');
+    expect(s.issues).toContain('key clash');
   });
   it('stort tempohopp blir rødt, og forklaringen sier det samme', () => {
     const s = scoreTransition(tr({ bpm: 122 }), tr({ bpm: 140 }));
     expect(s.grade).toBe('bad');
-    expect(s.explanation).toMatch(/— vanskelig$/);
+    expect(s.explanation).toMatch(/— tricky$/);
   });
   it('brått energihopp flagges', () => {
-    expect(scoreTransition(tr({ energy: 3 }), tr({ energy: 8 })).issues.join()).toMatch(/energihopp/);
+    expect(scoreTransition(tr({ energy: 3 }), tr({ energy: 8 })).issues.join()).toMatch(/energy jump/);
   });
   it('manglende data gir nøytral score og beskjed', () => {
     const s = scoreTransition(tr({ camelot: null, bpm: null }), tr({}));
-    expect(s.issues).toEqual(['mangler key', 'mangler BPM']);
+    expect(s.issues).toEqual(['missing key', 'missing BPM']);
     expect(s.grade).toBe('ok');
   });
 });
@@ -160,7 +160,7 @@ describe('analyse og brolåter', () => {
     expect(ideal.keys[0]).toBe('9A');
     expect(ideal.bpm).toBe(127);
     expect(ideal.energy).toBe(6);
-    expect(ideal.description).toMatch(/^trenger: 9A/);
+    expect(ideal.description).toMatch(/^needs: 9A/);
     const good = tr({ camelot: '9A', bpm: 127, energy: 6 });
     const bad = tr({ camelot: '3B', bpm: 100, energy: 1 });
     const res = findBridges(a, b, [bad, good]);

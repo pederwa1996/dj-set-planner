@@ -16,7 +16,7 @@ it('backup og gjenoppretting gir samme data', async () => {
   await restoreBackup(backup, 'replace', b);
   expect(await b.tracks.toArray()).toEqual(await a.tracks.toArray());
   expect((await b.sets.toArray()).map((s) => s.name)).toEqual(['Lørdag']);
-  await expect(restoreBackup({ foo: 1 }, 'merge', b)).rejects.toThrow(/gyldig/);
+  await expect(restoreBackup({ foo: 1 }, 'merge', b)).rejects.toThrow(/valid/);
   await a.delete();
   await b.delete();
 });

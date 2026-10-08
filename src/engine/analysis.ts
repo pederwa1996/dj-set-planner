@@ -1,6 +1,6 @@
 import { energyAt, type EnergyCurve } from './energy';
 import { defaultPlaySec, primaryArtist } from './sequencer';
-import { scoreTransition, type TransitionOptions, type TransitionScore } from './transition';
+import { ISSUE, scoreTransition, type TransitionOptions, type TransitionScore } from './transition';
 import type { MixTrack } from './types';
 
 export interface SetItem<T extends MixTrack = MixTrack> {
@@ -57,9 +57,11 @@ export function analyzeSet<T extends MixTrack>(tracks: T[], opts: AnalysisOption
   });
   const transitions = tracks.slice(1).map((b, i) => scoreTransition(tracks[i], b, opts));
 
+  // Et hull er en overgang som ikke er god (gode overganger med små avvik regnes ikke som hull)
   const gaps: Gap[] = transitions.flatMap((tr, i) => {
-    const reasons = tr.issues.filter((x) => !x.startsWith('mangler'));
-    if (tr.grade === 'bad' && !reasons.length) reasons.push(`lav score (${tr.score})`);
+    if (tr.grade === 'good') return [];
+    const reasons = tr.issues.filter((x) => x !== ISSUE.missingKey && x !== ISSUE.missingBpm);
+    if (tr.grade === 'bad' && !reasons.length) reasons.push(`low score (${tr.score})`);
     return reasons.length || tr.grade === 'bad' ? [{ index: i, reasons }] : [];
   });
 
@@ -68,15 +70,15 @@ export function analyzeSet<T extends MixTrack>(tracks: T[], opts: AnalysisOption
   tracks.forEach((t, i) => {
     for (let k = Math.max(0, i - artistGap); k < i; k++) {
       if (artists[k] && artists[k] === artists[i]) {
-        warnings.push({ index: i, kind: 'artist', message: `${t.artist} også ${i - k === 1 ? 'rett før' : `${i - k} låter før`}` });
+        warnings.push({ index: i, kind: 'artist', message: `${t.artist} also ${i - k === 1 ? 'right before' : `${i - k} tracks before`}` });
         break;
       }
     }
-    if (t.bpm == null || t.camelot == null) warnings.push({ index: i, kind: 'missing', message: `mangler ${[t.bpm == null && 'BPM', t.camelot == null && 'key'].filter(Boolean).join(' og ')}` });
+    if (t.bpm == null || t.camelot == null) warnings.push({ index: i, kind: 'missing', message: `missing ${[t.bpm == null && 'BPM', t.camelot == null && 'key'].filter(Boolean).join(' and ')}` });
     const info = opts.playedInfo?.(t);
     if (info?.lastPlayedAt) {
       const days = Math.floor(((opts.now ?? new Date()).getTime() - new Date(info.lastPlayedAt).getTime()) / 86400000);
-      if (days >= 0 && days <= 30) warnings.push({ index: i, kind: 'recent', message: `spilt for ${days === 0 ? 'i dag' : `${days} dager siden`}${info.playCount > 1 ? ` (${info.playCount}× totalt)` : ''}` });
+      if (days >= 0 && days <= 30) warnings.push({ index: i, kind: 'recent', message: `played ${days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`}${info.playCount > 1 ? ` (${info.playCount}× total)` : ''}` });
     }
   });
 

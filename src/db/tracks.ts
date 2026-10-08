@@ -79,7 +79,7 @@ export async function addTracks(inputs: NewTrack[], database: DjDatabase = defau
 export async function updateTrack(id: string, changes: Partial<Track>, database: DjDatabase = defaultDb): Promise<void> {
   await database.transaction('rw', database.tracks, async () => {
     const existing = await database.tracks.get(id);
-    if (!existing) throw new Error(`Fant ikke låt ${id}`);
+    if (!existing) throw new Error(`Track ${id} not found`);
     const merged = { ...existing, ...sanitizeTrack(changes), updatedAt: new Date().toISOString() };
     merged.dupKey = makeDupKey(merged.artist, merged.title, merged.version);
     await database.tracks.put(merged);

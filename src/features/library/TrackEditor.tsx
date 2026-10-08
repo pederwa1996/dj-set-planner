@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Check, Download, Trash2 } from 'lucide-react';
 import type { Track } from '../../db/types';
-import { addTrack, emptyTrack, updateTrack } from '../../db/tracks';
-import { Button, EnergyPicker, Field, KeyInput, Modal, NumberInput, Stars, SuggestInput, TagInput } from '../../components/ui';
+import { addTrack, deleteTracks, emptyTrack, updateTrack } from '../../db/tracks';
+import { Button, EnergyPicker, Field, KeyInput, Modal, NumberInput, Segmented, Stars, SuggestInput, TagInput } from '../../components/ui';
 import { formatDuration, parseDuration } from '../../lib/normalize';
 import { OnlineLookupPanel } from './OnlineLookupPanel';
 
@@ -19,20 +20,19 @@ export function TrackEditor({
   track,
   onClose,
   suggestions,
-  onDelete,
   duplicateOf,
 }: {
   open: boolean;
   track: Track | null; // null = ny låt
   onClose: () => void;
   suggestions: EditorSuggestions;
-  onDelete?: (t: Track) => void;
   duplicateOf?: (artist: string, title: string, version: string) => Track[];
 }) {
   const [d, setD] = useState<Draft>(emptyTrack());
   const [duration, setDuration] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -40,6 +40,7 @@ export function TrackEditor({
     setD(base);
     setDuration(formatDuration(base.durationSec));
     setError('');
+    setConfirmDelete(false);
   }, [open, track]);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((prev) => ({ ...prev, [k]: v }));
@@ -48,13 +49,12 @@ export function TrackEditor({
 
   async function save(addAnother = false) {
     if (!d.artist.trim() || !d.title.trim()) {
-      setError('Artist og tittel må fylles ut.');
+      setError('Artist and title are required.');
       return;
     }
     setSaving(true);
     try {
       const data: Draft = { ...d, durationSec: parseDuration(duration) };
-      // Manuelt satt BPM/key markeres som manuelle
       if (track) await updateTrack(track.id, data);
       else await addTrack(data);
       if (addAnother) {
@@ -76,30 +76,48 @@ export function TrackEditor({
       open={open}
       onClose={onClose}
       wide
-      title={track ? 'Rediger låt' : 'Ny låt'}
+      title={track ? 'Edit track' : 'New track'}
       footer={
-        <>
-          {track && onDelete && (
-            <Button variant="danger" className="mr-auto" onClick={() => onDelete(track)}>
-              Slett
+        confirmDelete ? (
+          <>
+            <span className="mr-auto text-sm text-ink2">Delete this track? This can’t be undone.</span>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+              Cancel
             </Button>
-          )}
-          <Button variant="ghost" onClick={onClose}>
-            Avbryt
-          </Button>
-          {!track && (
-            <Button onClick={() => save(true)} disabled={saving}>
-              Lagre og legg til ny
+            <Button
+              variant="danger"
+              onClick={async () => {
+                await deleteTracks([track!.id]);
+                onClose();
+              }}
+            >
+              Delete
             </Button>
-          )}
-          <Button variant="primary" onClick={() => save()} disabled={saving}>
-            Lagre <kbd className="hidden text-xs opacity-60 sm:inline">Ctrl+Enter</kbd>
-          </Button>
-        </>
+          </>
+        ) : (
+          <>
+            {track && (
+              <Button variant="ghost" className="mr-auto text-bad" onClick={() => setConfirmDelete(true)}>
+                <Trash2 size={16} /> Delete
+              </Button>
+            )}
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            {!track && (
+              <Button onClick={() => save(true)} disabled={saving}>
+                Save & add another
+              </Button>
+            )}
+            <Button variant="primary" onClick={() => save()} disabled={saving}>
+              Save <kbd className="hidden text-[11px] opacity-50 sm:inline">Ctrl ↵</kbd>
+            </Button>
+          </>
+        )
       }
     >
       <form
-        className="grid grid-cols-1 gap-4 sm:grid-cols-6"
+        className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-6"
         onSubmit={(e) => {
           e.preventDefault();
           save();
@@ -111,30 +129,42 @@ export function TrackEditor({
           }
         }}
       >
-        {error && <p className="rounded-lg bg-red-900/50 px-3 py-2 text-sm text-red-200 sm:col-span-6">{error}</p>}
+        {error && <p className="rounded-xl bg-bad/15 px-4 py-2.5 text-sm text-[#f0a3a3] sm:col-span-6">{error}</p>}
 
-        <div className="flex gap-2 sm:col-span-6">
-          {(['owned', 'wishlist'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => set('status', s)}
-              className={`min-h-11 flex-1 rounded-lg border text-sm font-medium ${d.status === s ? 'border-accent bg-accent/15 text-accent' : 'border-line bg-panel2 text-slate-300'}`}
-            >
-              {s === 'owned' ? '✓ Har filen' : '⬇ Må skaffes'}
-            </button>
-          ))}
+        <div className="sm:col-span-6">
+          <Segmented
+            value={d.status}
+            onChange={(s) => set('status', s)}
+            options={[
+              {
+                value: 'owned',
+                label: (
+                  <>
+                    <Check size={15} /> I have the file
+                  </>
+                ),
+              },
+              {
+                value: 'wishlist',
+                label: (
+                  <>
+                    <Download size={15} /> To get
+                  </>
+                ),
+              },
+            ]}
+          />
         </div>
 
-        <Field label="Artist *" className="sm:col-span-3">
+        <Field label="Artist" className="sm:col-span-3">
           <input data-autofocus autoFocus className="input" value={d.artist} onChange={(e) => set('artist', e.target.value)} />
         </Field>
-        <Field label="Tittel *" className="sm:col-span-3">
+        <Field label="Title" className="sm:col-span-3">
           <input className="input" value={d.title} onChange={(e) => set('title', e.target.value)} />
         </Field>
         {dups.length > 0 && (
-          <p className="rounded-lg bg-amber-900/40 px-3 py-2 text-sm text-amber-200 sm:col-span-6">
-            ⚠ Ser ut som en duplikat av: {dups.map((x) => `${x.artist} – ${x.title}${x.version ? ` (${x.version})` : ''}`).join('; ')}
+          <p className="rounded-xl bg-ok/10 px-4 py-2.5 text-sm text-ok sm:col-span-6">
+            Looks like a duplicate of: {dups.map((x) => `${x.artist} – ${x.title}${x.version ? ` (${x.version})` : ''}`).join('; ')}
           </p>
         )}
         <div className="sm:col-span-6">
@@ -146,67 +176,62 @@ export function TrackEditor({
             }}
           />
         </div>
-        <Field label="Remix / versjon" className="sm:col-span-2">
+        <Field label="Remix / version" className="sm:col-span-2">
           <input className="input" placeholder="Original Mix" value={d.version} onChange={(e) => set('version', e.target.value)} />
         </Field>
         <Field label="Label" className="sm:col-span-2">
           <input className="input" value={d.label} onChange={(e) => set('label', e.target.value)} />
         </Field>
-        <Field label="År" className="sm:col-span-1">
+        <Field label="Year" className="sm:col-span-1">
           <NumberInput value={d.year} onChange={(v) => set('year', v == null ? null : Math.round(v))} />
         </Field>
-        <Field label="Lengde" className="sm:col-span-1" hint="m:ss">
+        <Field label="Length" className="sm:col-span-1">
           <input className="input" inputMode="numeric" placeholder="6:30" value={duration} onChange={(e) => setDuration(e.target.value)} />
         </Field>
 
-        <Field label="BPM" className="sm:col-span-2" hint={d.analysis?.bpm ? `Analyse foreslår ${d.analysis.bpm}` : undefined}>
+        <Field label="BPM" className="sm:col-span-2" hint={d.analysis?.bpm ? `Analysis suggests ${d.analysis.bpm}` : undefined}>
           <NumberInput value={d.bpm} step="0.01" placeholder="128.00" onChange={(v) => setD((p) => ({ ...p, bpm: v, sources: { ...p.sources, bpm: 'manual' } }))} />
         </Field>
-        <Field label="Key (Camelot ⇄ vanlig notasjon)" className="sm:col-span-4" group>
+        <Field label="Key — Camelot or musical notation" className="sm:col-span-4" group>
           <KeyInput value={d.camelot} onChange={(v) => setD((p) => ({ ...p, camelot: v, sources: { ...p.sources, camelot: 'manual' } }))} />
         </Field>
 
-        <Field label={`Energi ${d.energy ?? '–'}/10`} className="sm:col-span-6" group>
+        <Field label={`Energy ${d.energy ?? '–'} / 10`} className="sm:col-span-6" group hint="1–3 warm-up · 4–6 groove · 7–8 driving · 9–10 peak">
           <EnergyPicker value={d.energy} onChange={(v) => setD((p) => ({ ...p, energy: v, sources: { ...p.sources, energy: 'manual' } }))} />
         </Field>
 
-        <Field label="Sjanger" className="sm:col-span-2">
+        <Field label="Genre" className="sm:col-span-2">
           <SuggestInput value={d.genre} onChange={(v) => set('genre', v)} suggestions={suggestions.genres} />
         </Field>
-        <Field label="Undersjanger" className="sm:col-span-2">
+        <Field label="Subgenre" className="sm:col-span-2">
           <SuggestInput value={d.subgenre} onChange={(v) => set('subgenre', v)} suggestions={suggestions.subgenres} />
         </Field>
-        <Field label="Stemning" className="sm:col-span-2">
-          <SuggestInput value={d.mood} onChange={(v) => set('mood', v)} suggestions={suggestions.moods} placeholder="euforisk, mørk …" />
+        <Field label="Mood" className="sm:col-span-2">
+          <SuggestInput value={d.mood} onChange={(v) => set('mood', v)} suggestions={suggestions.moods} placeholder="euphoric, dark…" />
         </Field>
 
-        <Field label="Tagger" className="sm:col-span-6" group>
+        <Field label="Tags" className="sm:col-span-6" group>
           <TagInput value={d.tags} onChange={(v) => set('tags', v)} suggestions={suggestions.tags} />
         </Field>
 
-        <Field label="Intro (takter)" className="sm:col-span-1">
+        <Field label="Intro (bars)" className="sm:col-span-1">
           <NumberInput value={d.introBars} onChange={(v) => set('introBars', v)} placeholder="32" />
         </Field>
-        <Field label="Outro (takter)" className="sm:col-span-1">
+        <Field label="Outro (bars)" className="sm:col-span-1">
           <NumberInput value={d.outroBars} onChange={(v) => set('outroBars', v)} placeholder="32" />
         </Field>
-        <Field label="Min vurdering" className="sm:col-span-2" group>
+        <Field label="My rating" className="sm:col-span-2" group>
           <Stars value={d.rating} onChange={(v) => set('rating', v)} />
         </Field>
-        <Field label="Antall ganger spilt" className="sm:col-span-1">
+        <Field label="Times played" className="sm:col-span-1">
           <NumberInput value={d.playCount} onChange={(v) => set('playCount', Math.max(0, Math.round(v ?? 0)))} />
         </Field>
-        <Field label="Spilt sist" className="sm:col-span-1">
-          <input
-            type="date"
-            className="input"
-            value={d.lastPlayedAt?.slice(0, 10) ?? ''}
-            onChange={(e) => set('lastPlayedAt', e.target.value ? new Date(e.target.value).toISOString() : null)}
-          />
+        <Field label="Last played" className="sm:col-span-1">
+          <input type="date" className="input" value={d.lastPlayedAt?.slice(0, 10) ?? ''} onChange={(e) => set('lastPlayedAt', e.target.value ? new Date(e.target.value).toISOString() : null)} />
         </Field>
 
-        <Field label="Notater" className="sm:col-span-6">
-          <textarea className="input min-h-24" value={d.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Breakdown etter 3 min, fin å mikse ut av …" />
+        <Field label="Notes" className="sm:col-span-6">
+          <textarea className="input min-h-24" value={d.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Breakdown after 3 min, great to mix out of…" />
         </Field>
         <button type="submit" className="hidden" />
       </form>

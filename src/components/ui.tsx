@@ -1,23 +1,46 @@
 import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { Check, Download, Star, X } from 'lucide-react';
 import { ALL_CAMELOT, camelotToMusical, toCamelot } from '../engine/camelot';
+import { href, keyRoute, type Route } from '../lib/router';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+/* ---------- Knapper ---------- */
+
+type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger';
 const variants: Record<Variant, string> = {
-  primary: 'bg-accent text-slate-950 hover:bg-cyan-300 font-semibold',
-  secondary: 'bg-panel2 text-slate-100 hover:bg-line border border-line',
-  ghost: 'text-slate-200 hover:bg-panel2',
-  danger: 'bg-red-600/90 text-white hover:bg-red-500 font-semibold',
+  primary: 'bg-cream text-[#1f1e1d] hover:bg-white font-medium',
+  accent: 'bg-accent text-[#1f1e1d] hover:bg-[#e08a6c] font-medium',
+  secondary: 'border border-line text-ink hover:bg-raised',
+  ghost: 'text-ink2 hover:bg-raised hover:text-ink',
+  danger: 'bg-bad text-white hover:bg-[#de4b4b] font-medium',
 };
 
-export function Button({ variant = 'secondary', className = '', ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+export function Button({ variant = 'secondary', size = 'md', className = '', ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: 'sm' | 'md' }) {
+  const sz = size === 'sm' ? 'min-h-9 px-3 text-[13px] rounded-lg' : 'min-h-11 px-4 text-sm rounded-xl';
+  return <button type="button" className={`inline-flex items-center justify-center gap-2 whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-40 ${sz} ${variants[variant]} ${className}`} {...rest} />;
+}
+
+export function IconButton({ label, className = '', active, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; active?: boolean }) {
   return (
     <button
       type="button"
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${variants[variant]} ${className}`}
+      aria-label={label}
+      title={label}
+      className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg transition disabled:opacity-30 ${active ? 'text-accent' : 'text-muted hover:bg-raised hover:text-ink'} ${className}`}
       {...rest}
     />
   );
 }
+
+/** Lenke til en rute (hash-ruting) */
+export function Link({ to, className = '', children, title, onClick }: { to: Route; className?: string; children: ReactNode; title?: string; onClick?: (e: React.MouseEvent) => void }) {
+  return (
+    <a href={href(to)} className={className} title={title} onClick={onClick}>
+      {children}
+    </a>
+  );
+}
+
+/* ---------- Dialog ---------- */
 
 export function Modal({ open, onClose, title, children, footer, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -33,20 +56,22 @@ export function Modal({ open, onClose, title, children, footer, wide }: { open: 
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label={title} className={`flex max-h-[95dvh] w-full flex-col rounded-t-2xl border border-line bg-panel shadow-2xl sm:rounded-2xl ${wide ? 'sm:max-w-4xl' : 'sm:max-w-lg'}`}>
-        <div className="flex items-center justify-between border-b border-line px-5 py-3">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} className="grid h-11 w-11 place-items-center rounded-lg text-2xl text-muted hover:bg-panel2" aria-label="Lukk">
-            ×
-          </button>
+    <div className="fixed inset-0 z-50 flex animate-fade-in items-end justify-center bg-black/60 backdrop-blur-[2px] sm:items-center sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-label={title} className={`flex max-h-[92dvh] w-full animate-pop-in flex-col rounded-t-3xl border border-line bg-surface shadow-2xl shadow-black/40 sm:rounded-2xl ${wide ? 'sm:max-w-4xl' : 'sm:max-w-lg'}`}>
+        <div className="flex items-center justify-between px-6 pb-2 pt-5">
+          <h2 className="serif text-xl">{title}</h2>
+          <IconButton label="Close" onClick={onClose} className="-mr-2">
+            <X size={18} />
+          </IconButton>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5 pt-2">{children}</div>
+        {footer && <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-6 py-4">{footer}</div>}
       </div>
     </div>
   );
 }
+
+/* ---------- Skjemaelementer ---------- */
 
 /**
  * Felt med etikett. Bruk `group` når innholdet er flere knapper/kontroller
@@ -55,51 +80,74 @@ export function Modal({ open, onClose, title, children, footer, wide }: { open: 
 export function Field({ label, children, hint, className = '', group }: { label: string; children: ReactNode; hint?: ReactNode; className?: string; group?: boolean }) {
   const inner = (
     <>
-      <span className="text-xs font-medium uppercase tracking-wide text-muted">{label}</span>
+      <span className="label">{label}</span>
       {children}
       {hint && <span className="text-xs text-muted">{hint}</span>}
     </>
   );
   return group ? (
-    <div role="group" aria-label={label} className={`flex flex-col gap-1 ${className}`}>
+    <div role="group" aria-label={label} className={`flex flex-col gap-1.5 ${className}`}>
       {inner}
     </div>
   ) : (
-    <label className={`flex flex-col gap-1 ${className}`}>{inner}</label>
+    <label className={`flex flex-col gap-1.5 ${className}`}>{inner}</label>
+  );
+}
+
+/** Segmentert velger (som i Claude-appens innstillinger) */
+export function Segmented<T extends string>({ value, onChange, options, className = '' }: { value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode }[]; className?: string }) {
+  return (
+    <div role="radiogroup" className={`inline-flex rounded-xl border border-line bg-sidebar p-1 ${className}`}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={`inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] transition ${value === o.value ? 'bg-raised text-ink shadow-sm' : 'text-muted hover:text-ink'}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
 export function Stars({ value, onChange, size = 'md' }: { value: number; onChange?: (v: number) => void; size?: 'sm' | 'md' }) {
-  const cls = size === 'sm' ? 'text-base' : 'text-2xl min-w-9 min-h-11';
+  const px = size === 'sm' ? 13 : 22;
   return (
-    <span className="inline-flex items-center" aria-label={`${value} av 5 stjerner`}>
-      {[1, 2, 3, 4, 5].map((n) =>
-        onChange ? (
-          <button key={n} type="button" className={`${cls} px-0.5 ${n <= value ? 'text-amber-400' : 'text-slate-600'} hover:text-amber-300`} onClick={() => onChange(n === value ? 0 : n)} aria-label={`${n} stjerner`}>
-            ★
+    <span className="inline-flex items-center" aria-label={`${value} of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((n) => {
+        const icon = <Star size={px} className={n <= value ? 'fill-accent text-accent' : 'text-[#55544e]'} />;
+        return onChange ? (
+          <button key={n} type="button" className="grid h-11 w-9 place-items-center" onClick={() => onChange(n === value ? 0 : n)} aria-label={`${n} stars`}>
+            {icon}
           </button>
         ) : (
-          <span key={n} className={`${cls} ${n <= value ? 'text-amber-400' : 'text-slate-700'}`}>
-            ★
-          </span>
-        ),
-      )}
+          <span key={n}>{icon}</span>
+        );
+      })}
     </span>
   );
 }
 
-/** Farge for energi 1–10, fra blå (rolig) til rød (peak) */
-export function energyColor(e: number | null): string {
-  if (e == null) return 'bg-slate-700 text-slate-300';
-  if (e <= 3) return 'bg-sky-700 text-white';
-  if (e <= 5) return 'bg-emerald-700 text-white';
-  if (e <= 7) return 'bg-amber-600 text-slate-950';
-  if (e <= 8) return 'bg-orange-600 text-white';
-  return 'bg-red-600 text-white';
+/* ---------- Energi og key ---------- */
+
+/** Energi 1–10 som én fargetone fra dempet til sterk (sekvensiell skala, tallet vises alltid) */
+export function energyStyle(e: number | null): React.CSSProperties {
+  if (e == null) return { background: '#3a3936', color: '#9c9a91' };
+  const t = (Math.min(10, Math.max(1, e)) - 1) / 9;
+  const mix = (a: number, b: number) => Math.round(a + (b - a) * t);
+  return { background: `rgb(${mix(74, 217)}, ${mix(72, 89)}, ${mix(66, 38)})`, color: '#fff' };
 }
 
 export function EnergyBadge({ value }: { value: number | null }) {
-  return <span className={`inline-grid h-7 min-w-7 place-items-center rounded-md px-1 text-sm font-bold ${energyColor(value)}`}>{value ?? '–'}</span>;
+  return (
+    <span className="inline-grid h-6 min-w-6 place-items-center rounded-md px-1 text-xs font-semibold tabular-nums" style={energyStyle(value)} title={value == null ? 'Energy not set' : `Energy ${value}/10`}>
+      {value ?? '–'}
+    </span>
+  );
 }
 
 export function EnergyPicker({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
@@ -110,7 +158,9 @@ export function EnergyPicker({ value, onChange }: { value: number | null; onChan
           key={n}
           type="button"
           onClick={() => onChange(n === value ? null : n)}
-          className={`h-11 rounded-md text-sm font-bold transition ${n === value ? `${energyColor(n)} ring-2 ring-white` : 'bg-panel2 text-slate-300 hover:bg-line'}`}
+          aria-pressed={n === value}
+          className={`h-11 rounded-lg text-sm font-semibold tabular-nums transition ${n === value ? 'ring-2 ring-cream ring-offset-2 ring-offset-surface' : 'opacity-80 hover:opacity-100'}`}
+          style={energyStyle(n)}
         >
           {n}
         </button>
@@ -119,23 +169,31 @@ export function EnergyPicker({ value, onChange }: { value: number | null; onChan
   );
 }
 
-/** Hue på Camelot-hjulet, brukes til å fargelegge keys konsistent */
+/** Fast farge per posisjon på Camelot-hjulet (med tekst, så fargen er aldri alene) */
 export function keyColor(camelot: string | null): string {
-  if (!camelot) return 'hsl(220 10% 40%)';
+  if (!camelot) return '#4a4944';
   const num = parseInt(camelot, 10);
   const minor = camelot.endsWith('A');
-  return `hsl(${((num - 1) * 30 + 0) % 360} ${minor ? 55 : 70}% ${minor ? 38 : 48}%)`;
+  return `hsl(${((num - 1) * 30 + 10) % 360} ${minor ? 38 : 46}% ${minor ? 36 : 44}%)`;
 }
 
-export function KeyBadge({ camelot, showMusical = true }: { camelot: string | null; showMusical?: boolean }) {
+/** Key som merke; klikkbar til key-siden når `link` er satt */
+export function KeyBadge({ camelot, showMusical = true, link = true }: { camelot: string | null; showMusical?: boolean; link?: boolean }) {
   if (!camelot) return <span className="text-muted">–</span>;
-  return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <span className="rounded-md px-1.5 py-0.5 text-sm font-bold text-white" style={{ background: keyColor(camelot) }}>
+  const inner = (
+    <>
+      <span className="rounded-md px-1.5 py-0.5 text-xs font-semibold text-white" style={{ background: keyColor(camelot) }}>
         {camelot}
       </span>
       {showMusical && <span className="text-xs text-muted">{camelotToMusical(camelot, 'short')}</span>}
-    </span>
+    </>
+  );
+  return link ? (
+    <a href={href(keyRoute(camelot))} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md hover:brightness-125" title={`All tracks in ${camelot} (${camelotToMusical(camelot)})`}>
+      {inner}
+    </a>
+  ) : (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">{inner}</span>
   );
 }
 
@@ -148,8 +206,8 @@ export function KeyInput({ value, onChange }: { value: string | null; onChange: 
   const parsed = text ? toCamelot(text) : null;
   return (
     <div className="flex flex-col gap-2 sm:flex-row">
-      <select className="input sm:w-52" value={value ?? ''} onChange={(e) => onChange(e.target.value || null)}>
-        <option value="">Ukjent key</option>
+      <select className="input sm:w-52" value={value ?? ''} onChange={(e) => onChange(e.target.value || null)} aria-label="Key">
+        <option value="">Unknown key</option>
         {ALL_CAMELOT.map((c) => (
           <option key={c} value={c}>
             {c} · {camelotToMusical(c)}
@@ -158,7 +216,8 @@ export function KeyInput({ value, onChange }: { value: string | null; onChange: 
       </select>
       <input
         className={`input flex-1 ${text && !parsed ? 'border-bad' : ''}`}
-        placeholder="…eller skriv: A minor, Am, 8A"
+        placeholder="…or type: A minor, Am, 8A"
+        aria-label="Type a key"
         value={text}
         onChange={(e) => {
           setText(e.target.value);
@@ -171,27 +230,46 @@ export function KeyInput({ value, onChange }: { value: string | null; onChange: 
   );
 }
 
-export function Chip({ children, onRemove, active, onClick }: { children: ReactNode; onRemove?: () => void; active?: boolean; onClick?: () => void }) {
-  const base = `inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm ${active ? 'border-accent bg-accent/15 text-accent' : 'border-line bg-panel2 text-slate-200'}`;
+/* ---------- Status ---------- */
+
+export function StatusPill({ status }: { status: 'owned' | 'wishlist' }) {
+  return status === 'owned' ? (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-muted">
+      <Check size={13} /> Owned
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-accent">
+      <Download size={13} /> To get
+    </span>
+  );
+}
+
+/* ---------- Chips og tagger ---------- */
+
+export function Chip({ children, onRemove, active, onClick, count }: { children: ReactNode; onRemove?: () => void; active?: boolean; onClick?: () => void; count?: number }) {
+  const base = `inline-flex items-center gap-1.5 rounded-full border px-3 text-[13px] transition ${active ? 'border-accent/50 bg-accent-soft text-accent' : 'border-line text-ink2'}`;
+  const c = count != null && <span className="text-xs tabular-nums text-muted">{count}</span>;
   if (onClick)
     return (
-      <button type="button" onClick={onClick} className={`${base} min-h-9 hover:border-accent`}>
+      <button type="button" onClick={onClick} aria-pressed={active} className={`${base} min-h-9 hover:border-[#6b6a63] hover:text-ink`}>
         {children}
+        {c}
       </button>
     );
   return (
-    <span className={base}>
+    <span className={`${base} min-h-8`}>
       {children}
+      {c}
       {onRemove && (
-        <button type="button" onClick={onRemove} className="-mr-1 grid h-6 w-6 place-items-center rounded-full text-muted hover:bg-line hover:text-white" aria-label="Fjern">
-          ×
+        <button type="button" onClick={onRemove} className="-mr-1.5 grid h-6 w-6 place-items-center rounded-full text-muted hover:bg-raised hover:text-ink" aria-label="Remove">
+          <X size={13} />
         </button>
       )}
     </span>
   );
 }
 
-export const DEFAULT_TAGS = ['vokal', 'instrumental', 'peak time', 'warm-up', 'closer', 'opener', 'klassiker', 'banger', 'acapella', 'tool'];
+export const DEFAULT_TAGS = ['vocal', 'instrumental', 'peak time', 'warm-up', 'closer', 'opener', 'classic', 'banger', 'acapella', 'tool'];
 
 export function TagInput({ value, onChange, suggestions }: { value: string[]; onChange: (v: string[]) => void; suggestions: string[] }) {
   const [text, setText] = useState('');
@@ -213,7 +291,8 @@ export function TagInput({ value, onChange, suggestions }: { value: string[]; on
         <input
           className="input min-w-40 flex-1"
           list={listId}
-          placeholder="Ny tagg + Enter"
+          placeholder="New tag + Enter"
+          aria-label="New tag"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -244,11 +323,11 @@ export function TagInput({ value, onChange, suggestions }: { value: string[]; on
 }
 
 /** Tekstfelt med forslag fra eksisterende verdier */
-export function SuggestInput({ value, onChange, suggestions, placeholder }: { value: string; onChange: (v: string) => void; suggestions: string[]; placeholder?: string }) {
+export function SuggestInput({ value, onChange, suggestions, placeholder, label }: { value: string; onChange: (v: string) => void; suggestions: string[]; placeholder?: string; label?: string }) {
   const listId = useId();
   return (
     <>
-      <input className="input" list={listId} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+      <input className="input" list={listId} value={value} placeholder={placeholder} aria-label={label} onChange={(e) => onChange(e.target.value)} />
       <datalist id={listId}>
         {suggestions.map((s) => (
           <option key={s} value={s} />
@@ -259,7 +338,7 @@ export function SuggestInput({ value, onChange, suggestions, placeholder }: { va
 }
 
 /** Tallfelt som godtar komma, og bare sender gyldige tall (eller null) videre. */
-export function NumberInput({ value, onChange, placeholder, step, className = '' }: { value: number | null; onChange: (v: number | null) => void; placeholder?: string; step?: string; className?: string }) {
+export function NumberInput({ value, onChange, placeholder, step, className = '', label }: { value: number | null; onChange: (v: number | null) => void; placeholder?: string; step?: string; className?: string; label?: string }) {
   const [text, setText] = useState(value == null ? '' : String(value));
   const last = useRef(value);
   useEffect(() => {
@@ -274,6 +353,7 @@ export function NumberInput({ value, onChange, placeholder, step, className = ''
       inputMode="decimal"
       step={step}
       placeholder={placeholder}
+      aria-label={label}
       value={text}
       onChange={(e) => {
         setText(e.target.value);
@@ -287,3 +367,31 @@ export function NumberInput({ value, onChange, placeholder, step, className = ''
     />
   );
 }
+
+/* ---------- Layout ---------- */
+
+export function PageHeader({ title, subtitle, actions, eyebrow }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-end gap-x-4 gap-y-3 pb-2">
+      <div className="min-w-0 flex-1">
+        {eyebrow && <div className="mb-1 text-[13px] text-muted">{eyebrow}</div>}
+        <h1 className="serif text-[28px] leading-tight sm:text-[32px]">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export function EmptyState({ icon, title, children, actions }: { icon?: ReactNode; title: string; children?: ReactNode; actions?: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line px-6 py-14 text-center">
+      {icon && <div className="text-muted">{icon}</div>}
+      <p className="serif text-xl">{title}</p>
+      {children && <div className="max-w-md text-sm text-muted">{children}</div>}
+      {actions && <div className="mt-2 flex flex-wrap justify-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export const fmtDate = (iso: string | null | undefined, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }) => (iso ? new Date(iso).toLocaleDateString('en-GB', opts) : '');

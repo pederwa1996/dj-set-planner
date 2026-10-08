@@ -27,7 +27,7 @@ export function parseTextList(text: string, opts: { order?: 'artist-title' | 'ti
     let s = raw.trim();
     if (!s || s.startsWith('#')) return [];
     if (/^https?:\/\//i.test(s)) {
-      return [{ line: i + 1, raw, track: null, problem: 'Lenke – kan ikke leses uten navn. Bruk Exportify-CSV for Spotify-spillelister.' }];
+      return [{ line: i + 1, raw, track: null, problem: "Link — can't be read without a name. Use an Exportify CSV for Spotify playlists." }];
     }
     s = s
       .replace(/^\d{1,3}\s*[.)\]:-]?\s+/, '') // nummerering
@@ -47,7 +47,7 @@ export function parseTextList(text: string, opts: { order?: 'artist-title' | 'ti
     }
     artist = artist.trim();
     title = title.trim().replace(/^["“]|["”]$/g, '');
-    if (!artist || !title) return [{ line: i + 1, raw, track: null, problem: 'Fant ikke «Artist - Tittel»' }];
+    if (!artist || !title) return [{ line: i + 1, raw, track: null, problem: 'Couldn\'t find "Artist - Title"' }];
     const v = splitVersion(title);
     return [{ line: i + 1, raw, track: { artist, title: v.title, version: v.version } }];
   });

@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { ArrowDown, ArrowUp, CalendarDays, CheckCheck, ChevronRight, Download, GripVertical, Lock, LockOpen, MapPin, Plus, Redo2, Search, Settings2, Share, Sparkles, Undo2, Wand2, X } from 'lucide-react';
 import { db } from '../../db/db';
 import type { DjSet, SetSlot, Track } from '../../db/types';
 import { markSetPlayed, pairKey, playSecFor, saveSet } from '../../db/sets';
 import { updateTrack } from '../../db/tracks';
 import { analyzeSet } from '../../engine/analysis';
-import { buildSequences, type Lock, type SequenceResult } from '../../engine/sequencer';
-import { Button, EnergyBadge, EnergyPicker, Field, KeyBadge, Modal, NumberInput } from '../../components/ui';
-import { formatDuration, makeDupKey } from '../../lib/normalize';
+import { buildSequences, type Lock as SeqLock, type SequenceResult } from '../../engine/sequencer';
+import { CURVE_PRESETS } from '../../engine/energy';
+import { CamelotWheel } from '../../components/CamelotWheel';
+import { Button, EmptyState, EnergyBadge, EnergyPicker, Field, IconButton, KeyBadge, Modal, NumberInput, Segmented, fmtDate } from '../../components/ui';
+import { formatDuration } from '../../lib/normalize';
+import { href } from '../../lib/router';
 import { useLocalStorage } from '../../lib/useLocalStorage';
+import { openTrack } from '../../lib/uiStore';
 import { collectValues } from '../library/filter';
-import { TrackEditor } from '../library/TrackEditor';
 import { AlternativesDialog } from './AlternativesDialog';
 import { BridgeDialog } from './BridgeDialog';
-import { CamelotWheel } from './CamelotWheel';
 import { CurveEditor } from './CurveEditor';
 import { ExportDialog } from './ExportDialog';
 import { GRADE_STYLE } from './grade';
@@ -22,8 +25,17 @@ import { TrackPicker } from './TrackPicker';
 
 type Snapshot = Pick<DjSet, 'slots' | 'poolIds'>;
 
-export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void }) {
-  const stored = useLiveQuery(() => db.sets.get(setId), [setId]);
+function Stat({ label, children, tone }: { label: string; children: React.ReactNode; tone?: string }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs text-muted">{label}</span>
+      <span className={`text-[15px] tabular-nums ${tone ?? 'text-ink'}`}>{children}</span>
+    </div>
+  );
+}
+
+export function SetEditor({ setId }: { setId: string }) {
+  const stored = useLiveQuery(() => db.sets.get(setId).then((s) => s ?? null), [setId]);
   const allTracks = useLiveQuery(() => db.tracks.toArray(), []);
   const [draft, setDraft] = useState<DjSet | null>(null);
   const past = useRef<Snapshot[]>([]);
@@ -36,9 +48,9 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
   const [computing, setComputing] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [bridgeAt, setBridgeAt] = useState<number | null>(null);
-  const [editTrack, setEditTrack] = useState<Track | null>(null);
   const [energyFor, setEnergyFor] = useState<Track | null>(null);
-  const [showSettings, setShowSettings] = useLocalStorage('set.showSettings', true);
+  const [showSettings, setShowSettings] = useLocalStorage('set.showSettings.v2', false);
+  const [noteOpen, setNoteOpen] = useState<string | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const [confirmPlayed, setConfirmPlayed] = useState(false);
@@ -131,22 +143,28 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
     [draft, slotTracks, playSec],
   );
 
-  if (!draft || !allTracks || !analysis) return <p className="p-6 text-muted">Laster set …</p>;
+  if (stored === null)
+    return (
+      <EmptyState title="Set not found" actions={<a href={href({ name: 'sets' })} className="text-accent hover:underline">Back to sets</a>}>
+        It may have been deleted, or it lives in another browser.
+      </EmptyState>
+    );
+  if (!draft || !allTracks || !analysis) return null;
 
   const set = draft;
   const inSet = new Set(set.slots.map((s) => s.trackId));
   const poolOnly = set.poolIds.map((id) => byId.get(id)).filter((t): t is Track => !!t && !inSet.has(t.id));
   const poolTracks = set.poolIds.map((id) => byId.get(id)).filter((t): t is Track => !!t);
   const targetSec = set.targetMinutes ? set.targetMinutes * 60 : null;
-  const toBuy = slotTracks.filter((t) => t.status === 'wishlist').length;
+  const toGet = slotTracks.filter((t) => t.status === 'wishlist').length;
   const firstIndexByDup = new Map<string, number>();
   const dupWarnings = new Map<number, string>();
   slotTracks.forEach((t, i) => {
     const first = firstIndexByDup.get(t.dupKey);
     if (first === undefined) firstIndexByDup.set(t.dupKey, i);
-    else dupWarnings.set(i, `samme låt som nr. ${first + 1}`);
+    else dupWarnings.set(i, `same track as #${first + 1}`);
   });
-  const warningsAt = (i: number) => [...analysis.warnings.filter((w) => w.index === i), ...(dupWarnings.has(i) ? [{ index: i, kind: 'dup', message: dupWarnings.get(i)! }] : [])];
+  const warningsAt = (i: number) => [...analysis.warnings.filter((w) => w.index === i).map((w) => w.message), ...(dupWarnings.has(i) ? [dupWarnings.get(i)!] : [])];
   const values = collectValues(allTracks);
 
   function build() {
@@ -161,7 +179,7 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
       setPickerOpen(true);
       return;
     }
-    const locks: Lock[] = set.slots.flatMap((s, i): Lock[] => (s.locked ? [{ trackId: s.trackId, position: i === 0 ? 'first' : i === set.slots.length - 1 ? 'last' : i }] : []));
+    const locks: SeqLock[] = set.slots.flatMap((s, i): SeqLock[] => (s.locked ? [{ trackId: s.trackId, position: i === 0 ? 'first' : i === set.slots.length - 1 ? 'last' : i }] : []));
     setAltOpen(true);
     setComputing(true);
     setTimeout(() => {
@@ -196,141 +214,178 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
   const removeFromPool = (id: string) => update((s) => ({ ...s, poolIds: s.poolIds.filter((x) => x !== id) }), true);
   const scrollTo = (i: number) => rowRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  const byDupKey = new Map<string, Track[]>();
-  allTracks.forEach((t) => byDupKey.set(t.dupKey, [...(byDupKey.get(t.dupKey) ?? []), t]));
+  const choice = (on: boolean) => `min-h-10 rounded-xl border px-3 text-[13px] transition ${on ? 'border-accent/50 bg-accent-soft text-accent' : 'border-line text-ink2 hover:border-[#6b6a63] hover:text-ink'}`;
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Topp: navn og nøkkeltall */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" onClick={onBack}>
-          ← Sets
-        </Button>
-        <input className="input min-w-0 flex-1 basis-48 text-lg font-semibold" value={set.name} onChange={(e) => update((s) => ({ ...s, name: e.target.value }))} aria-label="Navn på settet" />
-        <input type="date" className="input w-40" value={set.date ?? ''} onChange={(e) => update((s) => ({ ...s, date: e.target.value || null }))} aria-label="Dato" />
-        <input className="input w-44" placeholder="Sted / arrangement" value={set.venue} onChange={(e) => update((s) => ({ ...s, venue: e.target.value }))} />
+    <div className="flex flex-col gap-6">
+      {/* Topp */}
+      <div className="flex flex-col gap-3">
+        <nav className="flex items-center gap-1 text-[13px] text-muted">
+          <a href={href({ name: 'sets' })} className="hover:text-ink">
+            Sets
+          </a>
+          <ChevronRight size={14} />
+        </nav>
+        <input
+          className="serif -mx-2 w-full rounded-xl border border-transparent bg-transparent px-2 py-1 text-[28px] leading-tight text-ink transition hover:border-line focus:border-[#6b6a63] focus:outline-none sm:text-[34px]"
+          value={set.name}
+          onChange={(e) => update((s) => ({ ...s, name: e.target.value }))}
+          aria-label="Set name"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 rounded-xl border border-line px-3 text-sm text-ink2 focus-within:border-[#6b6a63]">
+            <CalendarDays size={15} className="text-muted" />
+            <input type="date" className="min-h-10 bg-transparent focus:outline-none" value={set.date ?? ''} onChange={(e) => update((s) => ({ ...s, date: e.target.value || null }))} aria-label="Date" />
+          </label>
+          <label className="flex min-w-0 flex-1 basis-48 items-center gap-2 rounded-xl border border-line px-3 text-sm text-ink2 focus-within:border-[#6b6a63] sm:max-w-xs">
+            <MapPin size={15} className="text-muted" />
+            <input className="min-h-10 w-full bg-transparent placeholder:text-muted focus:outline-none" placeholder="Venue / event" value={set.venue} onChange={(e) => update((s) => ({ ...s, venue: e.target.value }))} aria-label="Venue" />
+          </label>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted">
-        <span>
-          <strong className="text-slate-100">{slotTracks.length}</strong> låter i settet · {poolOnly.length} i reserve
-        </span>
-        <span>
-          Lengde <strong className="text-slate-100">{formatDuration(analysis.totalSec)}</strong>
-          {targetSec ? ` / ${formatDuration(targetSec)}` : ''}
-        </span>
-        {analysis.transitions.length > 0 && (
-          <span>
-            Snittscore <strong className="text-slate-100">{analysis.avgScore}</strong>
-          </span>
+      <div className="card flex flex-wrap gap-x-8 gap-y-3 px-5 py-4">
+        <Stat label="Tracks">
+          {slotTracks.length}
+          {poolOnly.length > 0 && <span className="text-sm text-muted"> + {poolOnly.length} in reserve</span>}
+        </Stat>
+        <Stat label="Length">
+          {formatDuration(analysis.totalSec)}
+          {targetSec ? <span className="text-sm text-muted"> / {formatDuration(targetSec)}</span> : null}
+        </Stat>
+        {analysis.transitions.length > 0 && <Stat label="Average flow">{analysis.avgScore}</Stat>}
+        {analysis.gaps.length > 0 && (
+          <Stat label="Gaps" tone="text-[#f07a7a]">
+            ! {analysis.gaps.length}
+          </Stat>
         )}
-        {analysis.gaps.length > 0 && <span className="text-red-300">! {analysis.gaps.length} hull</span>}
-        {toBuy > 0 && (
-          <button type="button" className="text-amber-300 hover:underline" onClick={() => setExportOpen(true)}>
-            ⬇ {toBuy} må skaffes
+        {toGet > 0 && (
+          <button type="button" onClick={() => setExportOpen(true)} className="text-left">
+            <Stat label="To get" tone="text-accent">
+              <Download size={14} className="mr-1 inline" />
+              {toGet}
+            </Stat>
           </button>
         )}
-        {set.playedAt && <span>Spilt {new Date(set.playedAt).toLocaleDateString('no')}</span>}
+        {set.playedAt && <Stat label="Played">{fmtDate(set.playedAt)}</Stat>}
       </div>
 
       {/* Verktøylinje */}
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={() => setPickerOpen(true)}>
-          ＋ Legg til låter <kbd className="hidden text-xs opacity-50 lg:inline">A</kbd>
-        </Button>
+      <div className="flex flex-wrap items-center gap-2">
         <Button variant="primary" onClick={build}>
-          ⚡ Bygg rekkefølge <kbd className="hidden text-xs opacity-60 lg:inline">B</kbd>
+          <Wand2 size={16} /> Build order
         </Button>
-        <Button onClick={undo} disabled={!past.current.length} title="Angre (Ctrl+Z)">
-          ↶ Angre
-        </Button>
-        <Button onClick={redo} disabled={!future.current.length} title="Gjør om (Ctrl+Shift+Z)">
-          ↷ Gjør om
+        <Button onClick={() => setPickerOpen(true)}>
+          <Plus size={16} /> Add tracks
         </Button>
         <Button onClick={() => setExportOpen(true)} disabled={!slotTracks.length}>
-          ⇩ Eksport <kbd className="hidden text-xs opacity-50 lg:inline">E</kbd>
+          <Share size={16} /> Export
         </Button>
-        <Button onClick={() => setShowSettings(!showSettings)}>{showSettings ? 'Skjul innstillinger' : '⚙ Innstillinger for settet'}</Button>
-        <Button variant="ghost" onClick={() => setConfirmPlayed(true)} disabled={!slotTracks.length}>
-          ✓ Marker som spilt
+        <span className="mx-1 hidden h-6 w-px bg-line sm:block" />
+        <IconButton label="Undo (Ctrl+Z)" onClick={undo} disabled={!past.current.length}>
+          <Undo2 size={18} />
+        </IconButton>
+        <IconButton label="Redo (Ctrl+Shift+Z)" onClick={redo} disabled={!future.current.length}>
+          <Redo2 size={18} />
+        </IconButton>
+        <IconButton label="Set settings" active={showSettings} onClick={() => setShowSettings(!showSettings)}>
+          <Settings2 size={18} />
+        </IconButton>
+        <Button variant="ghost" className="ml-auto" onClick={() => setConfirmPlayed(true)} disabled={!slotTracks.length}>
+          <CheckCheck size={16} /> Mark as played
         </Button>
       </div>
 
+      {!showSettings && (
+        <button type="button" onClick={() => setShowSettings(true)} className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 self-start rounded-lg px-1 text-[13px] text-muted transition hover:text-ink">
+          <Settings2 size={14} />
+          <span>{set.targetMinutes ? `${set.targetMinutes} min` : 'Every track'}</span>·<span>{set.curve.preset === 'custom' ? 'Custom curve' : CURVE_PRESETS[set.curve.preset].label}</span>·
+          <span>{set.playMode === 'full' ? 'Whole tracks' : `${set.fixedMinutes} min per track`}</span>·<span className="underline-offset-2 hover:underline">Edit</span>
+        </button>
+      )}
+
       {showSettings && (
-        <div className="grid grid-cols-1 gap-4 rounded-xl border border-line bg-panel p-4 lg:grid-cols-2">
-          <div className="flex flex-col gap-4">
-            <Field label="Ønsket lengde" group>
+        <div className="card grid grid-cols-1 gap-6 p-5 lg:grid-cols-2">
+          <div className="flex flex-col gap-5">
+            <Field label="Target length" group>
               <div className="flex flex-wrap items-center gap-2">
                 {[45, 60, 90, 120].map((m) => (
-                  <button key={m} type="button" onClick={() => update((s) => ({ ...s, targetMinutes: m }))} className={`min-h-11 rounded-lg border px-3 text-sm ${set.targetMinutes === m ? 'border-accent bg-accent/15 text-accent' : 'border-line bg-panel2'}`}>
+                  <button key={m} type="button" onClick={() => update((s) => ({ ...s, targetMinutes: m }))} className={choice(set.targetMinutes === m)}>
                     {m} min
                   </button>
                 ))}
-                <NumberInput className="w-24" placeholder="min" value={set.targetMinutes} onChange={(v) => update((s) => ({ ...s, targetMinutes: v && v > 0 ? v : null }))} />
-                <button type="button" onClick={() => update((s) => ({ ...s, targetMinutes: null }))} className={`min-h-11 rounded-lg border px-3 text-sm ${set.targetMinutes == null ? 'border-accent bg-accent/15 text-accent' : 'border-line bg-panel2'}`}>
-                  Bruk alle låtene
+                <NumberInput className="w-24" placeholder="min" label="Custom length in minutes" value={set.targetMinutes} onChange={(v) => update((s) => ({ ...s, targetMinutes: v && v > 0 ? v : null }))} />
+                <button type="button" onClick={() => update((s) => ({ ...s, targetMinutes: null }))} className={choice(set.targetMinutes == null)}>
+                  Use every track
                 </button>
               </div>
             </Field>
-            <Field label="Spilletid per låt" hint={set.playMode === 'full' ? 'Lengden på låten minus ca. 45 sekunder miksing. Låter uten lengde regnes som 5:30.' : 'Brukes når du bare spiller deler av hver låt.'} group>
+            <Field label="Play time per track" group hint={set.playMode === 'full' ? 'Track length minus ~45 seconds of mixing. Tracks without a length count as 5:30.' : 'For when you only play part of each track.'}>
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={() => update((s) => ({ ...s, playMode: 'full' }))} className={`min-h-11 rounded-lg border px-3 text-sm ${set.playMode === 'full' ? 'border-accent bg-accent/15 text-accent' : 'border-line bg-panel2'}`}>
-                  Hele låten
-                </button>
-                <button type="button" onClick={() => update((s) => ({ ...s, playMode: 'fixed' }))} className={`min-h-11 rounded-lg border px-3 text-sm ${set.playMode === 'fixed' ? 'border-accent bg-accent/15 text-accent' : 'border-line bg-panel2'}`}>
-                  Fast tid
-                </button>
+                <Segmented
+                  value={set.playMode}
+                  onChange={(playMode) => update((s) => ({ ...s, playMode }))}
+                  options={[
+                    { value: 'full', label: 'Whole track' },
+                    { value: 'fixed', label: 'Fixed time' },
+                  ]}
+                />
                 {set.playMode === 'fixed' && (
                   <>
-                    <NumberInput className="w-20" value={set.fixedMinutes} onChange={(v) => v && v > 0 && update((s) => ({ ...s, fixedMinutes: v }))} />
-                    <span className="text-muted">min</span>
+                    <NumberInput className="w-20" label="Minutes per track" value={set.fixedMinutes} onChange={(v) => v && v > 0 && update((s) => ({ ...s, fixedMinutes: v }))} />
+                    <span className="text-sm text-muted">min</span>
                   </>
                 )}
               </div>
             </Field>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Maks tempoendring" hint="per overgang">
-                <div className="flex items-center gap-2">
-                  <NumberInput className="w-20" value={set.maxTempoPct} onChange={(v) => v && v > 0 && update((s) => ({ ...s, maxTempoPct: v }))} />
-                  <span className="text-muted">%</span>
-                </div>
+              <Field label="Max tempo change" hint="per transition, in %">
+                <NumberInput className="w-24" value={set.maxTempoPct} onChange={(v) => v && v > 0 && update((s) => ({ ...s, maxTempoPct: v }))} />
               </Field>
-              <Field label="Samme artist" hint="minst så mange låter imellom">
-                <NumberInput className="w-20" value={set.artistGap} onChange={(v) => v != null && v >= 0 && update((s) => ({ ...s, artistGap: Math.round(v) }))} />
+              <Field label="Same artist" hint="at least this many tracks apart">
+                <NumberInput className="w-24" value={set.artistGap} onChange={(v) => v != null && v >= 0 && update((s) => ({ ...s, artistGap: Math.round(v) }))} />
               </Field>
             </div>
-            <Field label="Notater for settet">
-              <textarea className="input min-h-16" value={set.notes} onChange={(e) => update((s) => ({ ...s, notes: e.target.value }))} placeholder="Publikum, lyd, hvem spiller før/etter …" />
+            <Field label="Notes">
+              <textarea className="input min-h-16" value={set.notes} onChange={(e) => update((s) => ({ ...s, notes: e.target.value }))} placeholder="Crowd, sound system, who plays before and after…" />
             </Field>
           </div>
-          <Field label="Energikurve" group>
+          <Field label="Energy curve" group>
             <CurveEditor curve={set.curve} onChange={(curve) => update((s) => ({ ...s, curve }))} />
           </Field>
         </div>
       )}
 
       {!poolTracks.length && !slotTracks.length ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line px-6 py-14 text-center">
-          <p className="text-lg">Settet er tomt.</p>
-          <p className="max-w-md text-muted">Legg låter i potten — f.eks. alle trance-låtene dine mellom 132 og 140 BPM — og trykk «Bygg rekkefølge». Motoren lager tre forslag du kan velge mellom.</p>
-          <Button variant="primary" onClick={() => setPickerOpen(true)}>
-            ＋ Legg til låter
-          </Button>
-        </div>
+        <EmptyState
+          icon={<Sparkles size={28} />}
+          title="Start with a pool of tracks"
+          actions={
+            <Button variant="primary" onClick={() => setPickerOpen(true)}>
+              <Plus size={16} /> Add tracks
+            </Button>
+          }
+        >
+          Add the tracks you’re considering — say, all your trance between 132 and 140 BPM — then press “Build order”. You’ll get three options to choose from.
+        </EmptyState>
       ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
           {/* Settet */}
-          <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-3">
             {!slotTracks.length && (
-              <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line px-6 py-10 text-center">
-                <p>{poolTracks.length} låter i potten, men ingen rekkefølge ennå.</p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Button variant="primary" onClick={build}>
-                    ⚡ Bygg rekkefølge
-                  </Button>
-                  <Button onClick={() => applyOrder(poolTracks.map((t) => t.id))}>Legg alle inn i settet uten sortering</Button>
-                </div>
-              </div>
+              <EmptyState
+                title={`${poolTracks.length} tracks in the pool`}
+                actions={
+                  <>
+                    <Button variant="primary" onClick={build}>
+                      <Wand2 size={16} /> Build order
+                    </Button>
+                    <Button onClick={() => applyOrder(poolTracks.map((t) => t.id))}>Add all as they are</Button>
+                  </>
+                }
+              >
+                No order yet. Let the engine suggest one, or add them in the current order and arrange them yourself.
+              </EmptyState>
             )}
             <ol className="flex flex-col">
               {slotTracks.map((t, i) => {
@@ -342,6 +397,7 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
                 const g = tr ? GRADE_STYLE[tr.grade] : null;
                 const noteKey = next ? pairKey(t.id, next.id) : '';
                 const isPeak = analysis.peakIndex === i;
+                const warnings = warningsAt(i);
                 return (
                   <li
                     key={`${t.id}-${i}`}
@@ -359,7 +415,7 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
                     }}
                   >
                     <div
-                      className={`flex flex-wrap items-center gap-2 rounded-xl border bg-panel p-2 sm:flex-nowrap ${dragOver === i && dragFrom !== i ? 'border-accent' : slot.locked ? 'border-sky-700' : 'border-line'} ${dragFrom === i ? 'opacity-40' : ''}`}
+                      className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border bg-surface px-2 py-2 transition sm:flex-nowrap ${dragOver === i && dragFrom !== i ? 'border-accent' : slot.locked ? 'border-[#6b6a63]' : 'border-line'} ${dragFrom === i ? 'opacity-40' : ''}`}
                       draggable
                       onDragStart={(e) => {
                         setDragFrom(i);
@@ -370,79 +426,98 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
                         setDragOver(null);
                       }}
                     >
-                      <span className="hidden cursor-grab select-none px-1 text-muted sm:inline" title="Dra for å flytte">
-                        ⋮⋮
+                      <span className="hidden cursor-grab text-[#5a5953] sm:block" title="Drag to move">
+                        <GripVertical size={16} />
                       </span>
-                      <div className="flex w-12 shrink-0 flex-col items-center text-xs">
-                        <span className="text-base font-bold tabular-nums">{i + 1}</span>
-                        <span className="tabular-nums text-muted">{formatDuration(item.startSec)}</span>
+                      <div className="flex w-11 shrink-0 flex-col items-center">
+                        <span className="text-[15px] font-medium tabular-nums">{i + 1}</span>
+                        <span className="text-[11px] tabular-nums text-muted">{formatDuration(item.startSec)}</span>
                       </div>
-                      <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setEditTrack(t)} title="Rediger låt">
-                        <div className="truncate font-medium">
+                      <button type="button" className="min-w-0 flex-1 py-1 text-left" onClick={() => openTrack(t)} title="Edit track">
+                        <div className="truncate text-[15px]">
                           {t.title}
-                          {t.version && <span className="text-slate-400"> ({t.version})</span>}
+                          {t.version && <span className="text-muted"> · {t.version}</span>}
                         </div>
-                        <div className="truncate text-sm text-muted">{t.artist}</div>
-                        <div className="flex flex-wrap gap-x-2 text-xs">
-                          {t.status === 'wishlist' && <span className="text-amber-300">⬇ må skaffes</span>}
-                          {isPeak && <span className="text-sky-300">▲ toppen av settet</span>}
-                          {warningsAt(i).map((w) => (
-                            <span key={w.kind + w.message} className="text-orange-300">
-                              ⚠ {w.message}
-                            </span>
-                          ))}
-                        </div>
+                        <div className="truncate text-[13px] text-muted">{t.artist}</div>
+                        {(t.status === 'wishlist' || isPeak || warnings.length > 0) && (
+                          <div className="mt-0.5 flex flex-wrap gap-x-2.5 text-[12px]">
+                            {t.status === 'wishlist' && (
+                              <span className="text-accent">
+                                <Download size={11} className="mr-0.5 inline" />
+                                to get
+                              </span>
+                            )}
+                            {isPeak && <span className="text-ink2">▲ peak of the set</span>}
+                            {warnings.map((w) => (
+                              <span key={w} className="text-ok">
+                                ⚠ {w}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </button>
-                      <span className="w-12 text-right text-sm tabular-nums">{t.bpm != null ? t.bpm.toFixed(t.bpm % 1 ? 1 : 0) : '–'}</span>
+                      <span className="w-11 text-right text-sm tabular-nums text-ink2">{t.bpm != null ? t.bpm.toFixed(t.bpm % 1 ? 1 : 0) : '–'}</span>
                       <KeyBadge camelot={t.camelot} showMusical={false} />
-                      <button type="button" onClick={() => setEnergyFor(t)} title={`Energi ${t.energy ?? 'ikke satt'} — mål her: ${Math.round(item.targetEnergy)}. Klikk for å endre.`} className="flex flex-col items-center">
+                      <button type="button" onClick={() => setEnergyFor(t)} title={`Energy ${t.energy ?? 'not set'} — target here: ${Math.round(item.targetEnergy)}. Click to change.`} className="flex flex-col items-center gap-0.5 rounded-lg p-1 hover:bg-raised">
                         <EnergyBadge value={t.energy} />
-                        <span className="text-[10px] text-muted">mål {Math.round(item.targetEnergy)}</span>
+                        <span className="text-[10px] tabular-nums text-muted">→ {Math.round(item.targetEnergy)}</span>
                       </button>
-                      <div className="flex w-full shrink-0 justify-end border-t border-line pt-1 sm:w-auto sm:border-0 sm:pt-0">
-                        <button type="button" onClick={() => toggleLock(i)} className={`grid h-10 w-10 place-items-center rounded-lg ${slot.locked ? 'text-sky-300' : 'text-muted'} hover:bg-panel2`} title={slot.locked ? 'Låst — beholder plassen når rekkefølgen bygges' : 'Lås til denne plassen'} aria-label="Lås">
-                          {slot.locked ? '🔒' : '🔓'}
-                        </button>
-                        <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} className="grid h-10 w-10 place-items-center rounded-lg text-muted hover:bg-panel2 disabled:opacity-30" aria-label="Flytt opp">
-                          ↑
-                        </button>
-                        <button type="button" onClick={() => move(i, i + 1)} disabled={i === slotTracks.length - 1} className="grid h-10 w-10 place-items-center rounded-lg text-muted hover:bg-panel2 disabled:opacity-30" aria-label="Flytt ned">
-                          ↓
-                        </button>
-                        <button type="button" onClick={() => removeAt(i)} className="grid h-10 w-10 place-items-center rounded-lg text-muted hover:bg-panel2 hover:text-red-300" aria-label="Ta ut av settet" title="Ta ut av settet (blir liggende i reserve)">
-                          ✕
-                        </button>
+                      <div className="flex w-full shrink-0 justify-end border-t border-line/60 pt-1 sm:w-auto sm:border-0 sm:pt-0">
+                        <IconButton label={slot.locked ? 'Locked — keeps its place when you rebuild' : 'Lock to this position'} active={slot.locked} onClick={() => toggleLock(i)}>
+                          {slot.locked ? <Lock size={16} /> : <LockOpen size={16} />}
+                        </IconButton>
+                        <IconButton label="Move up" onClick={() => move(i, i - 1)} disabled={i === 0}>
+                          <ArrowUp size={16} />
+                        </IconButton>
+                        <IconButton label="Move down" onClick={() => move(i, i + 1)} disabled={i === slotTracks.length - 1}>
+                          <ArrowDown size={16} />
+                        </IconButton>
+                        <IconButton label="Remove from set (stays in reserve)" onClick={() => removeAt(i)} className="hover:!text-[#f07a7a]">
+                          <X size={16} />
+                        </IconButton>
                       </div>
                     </div>
 
                     {tr && g && (
-                      <div className={`my-1 ml-4 flex flex-col gap-1.5 rounded-lg border-l-4 px-3 py-2 text-sm sm:ml-10 ${g.border} ${g.bg}`}>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                          <span className={`font-semibold ${g.text}`}>
-                            {g.icon} {g.word} · {tr.score}
-                          </span>
-                          <span className="text-slate-300">{tr.explanation}</span>
-                          {(gap || tr.grade !== 'good') && (
-                            <Button className="!min-h-9 ml-auto !px-3" onClick={() => setBridgeAt(i)}>
-                              🔎 Finn brolåt
-                            </Button>
+                      <div className="ml-6 flex gap-3 py-1.5 sm:ml-12">
+                        <span className={`w-0.5 shrink-0 rounded-full ${g.bar}`} />
+                        <div className="flex min-w-0 flex-1 flex-col gap-1 py-1">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+                            <span className={`font-medium ${g.text}`}>
+                              {g.icon} {g.word} · {tr.score}
+                            </span>
+                            <span className="text-ink2">{tr.explanation}</span>
+                            {(gap || tr.grade !== 'good') && (
+                              <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setBridgeAt(i)}>
+                                <Search size={14} /> Find bridge track
+                              </Button>
+                            )}
+                          </div>
+                          {gap && gap.reasons.length > 0 && <div className="text-xs text-[#f07a7a]">Gap: {gap.reasons.join(', ')}</div>}
+                          {set.transitionNotes[noteKey] || noteOpen === noteKey ? (
+                            <input
+                              autoFocus={noteOpen === noteKey && !set.transitionNotes[noteKey]}
+                              className="-mx-2 w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-[13px] text-ink placeholder:text-[#6b6a63] hover:border-line focus:border-[#6b6a63] focus:outline-none"
+                              placeholder="e.g. “filter out the bass over 16 bars”"
+                              aria-label="Transition note"
+                              value={set.transitionNotes[noteKey] ?? ''}
+                              onBlur={() => setNoteOpen(null)}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                update((s) => {
+                                  const notes = { ...s.transitionNotes };
+                                  if (v) notes[noteKey] = v;
+                                  else delete notes[noteKey];
+                                  return { ...s, transitionNotes: notes };
+                                });
+                              }}
+                            />
+                          ) : (
+                            <button type="button" onClick={() => setNoteOpen(noteKey)} className="self-start text-[12px] text-[#6b6a63] transition hover:text-ink2">
+                              + Note
+                            </button>
                           )}
                         </div>
-                        {gap && gap.reasons.length > 0 && <div className="text-xs text-red-200">Hull: {gap.reasons.join(', ')}</div>}
-                        <input
-                          className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-slate-200 placeholder:text-slate-500 hover:border-line focus:border-accent focus:outline-none"
-                          placeholder="✎ Notat for overgangen (f.eks. «filter ut bassen på 16 takter»)"
-                          value={set.transitionNotes[noteKey] ?? ''}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            update((s) => {
-                              const notes = { ...s.transitionNotes };
-                              if (v) notes[noteKey] = v;
-                              else delete notes[noteKey];
-                              return { ...s, transitionNotes: notes };
-                            });
-                          }}
-                        />
                       </div>
                     )}
                   </li>
@@ -451,26 +526,26 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
             </ol>
 
             {poolOnly.length > 0 && (
-              <details className="rounded-xl border border-line bg-panel p-3" open={!slotTracks.length ? false : undefined}>
-                <summary className="cursor-pointer text-sm font-medium">Reserve — i potten, men ikke i settet ({poolOnly.length})</summary>
-                <ul className="mt-2 flex flex-col gap-1">
+              <details className="card px-4 py-3">
+                <summary className="cursor-pointer text-sm text-ink2">Reserve — in the pool but not in the set ({poolOnly.length})</summary>
+                <ul className="mt-2 flex flex-col">
                   {[...poolOnly]
                     .sort((a, b) => (a.bpm ?? 0) - (b.bpm ?? 0))
                     .map((t) => (
-                      <li key={t.id} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-panel2">
+                      <li key={t.id} className="flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-raised/60">
                         <span className="min-w-0 flex-1 truncate text-sm">
                           {t.artist} – {t.title}
-                          {t.status === 'wishlist' && <span className="text-amber-300"> ⬇</span>}
+                          {t.status === 'wishlist' && <Download size={12} className="ml-1 inline text-accent" />}
                         </span>
-                        <span className="w-10 text-right text-sm tabular-nums">{t.bpm ? Math.round(t.bpm) : '–'}</span>
+                        <span className="w-10 text-right text-sm tabular-nums text-ink2">{t.bpm ? Math.round(t.bpm) : '–'}</span>
                         <KeyBadge camelot={t.camelot} showMusical={false} />
                         <EnergyBadge value={t.energy} />
-                        <button type="button" className="grid h-10 w-10 place-items-center rounded-lg text-accent hover:bg-panel2" onClick={() => append(t.id)} aria-label="Legg til sist i settet" title="Legg til sist i settet">
-                          ＋
-                        </button>
-                        <button type="button" className="grid h-10 w-10 place-items-center rounded-lg text-muted hover:bg-panel2 hover:text-red-300" onClick={() => removeFromPool(t.id)} aria-label="Fjern fra potten" title="Fjern fra potten">
-                          ✕
-                        </button>
+                        <IconButton label="Add to the end of the set" onClick={() => append(t.id)}>
+                          <Plus size={16} />
+                        </IconButton>
+                        <IconButton label="Remove from pool" onClick={() => removeFromPool(t.id)}>
+                          <X size={16} />
+                        </IconButton>
                       </li>
                     ))}
                 </ul>
@@ -480,14 +555,14 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
 
           {/* Visualisering */}
           {slotTracks.length > 0 && (
-            <div className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-20 xl:self-start">
-              <div className="rounded-xl border border-line bg-panel p-3">
-                <h3 className="mb-2 text-sm font-semibold">Settet over tid</h3>
+            <div className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-6 xl:self-start">
+              <div className="card p-4">
+                <h3 className="mb-2 text-sm font-medium">The set over time</h3>
                 <SetChart analysis={analysis} curve={set.curve} onSelect={scrollTo} />
               </div>
-              <div className="flex flex-col items-center rounded-xl border border-line bg-panel p-3">
-                <h3 className="mb-2 self-start text-sm font-semibold">Veien rundt Camelot-hjulet</h3>
-                <CamelotWheel tracks={slotTracks} />
+              <div className="card flex flex-col items-center p-4">
+                <h3 className="mb-2 self-start text-sm font-medium">Journey around the Camelot wheel</h3>
+                <CamelotWheel tracks={slotTracks} size={280} />
               </div>
             </div>
           )}
@@ -528,33 +603,31 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
         }}
       />
       <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} set={set} tracks={slotTracks} analysis={analysis} />
-      <TrackEditor
-        open={!!editTrack}
-        track={editTrack}
-        onClose={() => setEditTrack(null)}
-        suggestions={values}
-        duplicateOf={(a, ti, v) => byDupKey.get(makeDupKey(a, ti, v)) ?? []}
-      />
-      <Modal open={!!energyFor} onClose={() => setEnergyFor(null)} title={energyFor ? `Energi: ${energyFor.artist} – ${energyFor.title}` : ''}>
+      <Modal open={!!energyFor} onClose={() => setEnergyFor(null)} title="Energy level">
         {energyFor && (
-          <EnergyPicker
-            value={energyFor.energy}
-            onChange={async (v) => {
-              await updateTrack(energyFor.id, { energy: v, sources: { ...energyFor.sources, energy: 'manual' } });
-              setEnergyFor(null);
-            }}
-          />
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-ink2">
+              {energyFor.artist} – {energyFor.title}
+            </p>
+            <EnergyPicker
+              value={energyFor.energy}
+              onChange={async (v) => {
+                await updateTrack(energyFor.id, { energy: v, sources: { ...energyFor.sources, energy: 'manual' } });
+                setEnergyFor(null);
+              }}
+            />
+            <p className="text-xs text-muted">1–3 warm-up · 4–6 groove · 7–8 driving · 9–10 peak</p>
+          </div>
         )}
-        <p className="mt-3 text-xs text-muted">1–3 rolig/warm-up · 4–6 groove · 7–8 driv · 9–10 peak</p>
       </Modal>
       <Modal
         open={confirmPlayed}
         onClose={() => setConfirmPlayed(false)}
-        title="Marker settet som spilt?"
+        title="Mark the set as played?"
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirmPlayed(false)}>
-              Avbryt
+              Cancel
             </Button>
             <Button
               variant="primary"
@@ -565,12 +638,14 @@ export function SetEditor({ setId, onBack }: { setId: string; onBack: () => void
                 setConfirmPlayed(false);
               }}
             >
-              Marker som spilt
+              Mark as played
             </Button>
           </>
         }
       >
-        <p className="text-sm">Alle {slotTracks.length} låtene får +1 i «antall ganger spilt» og «spilt sist» settes til {set.date ? new Date(set.date).toLocaleDateString('no') : 'i dag'}. Da får du advarsel hvis du spiller dem igjen for tett.</p>
+        <p className="text-sm text-ink2">
+          All {slotTracks.length} tracks get +1 to “times played”, and “last played” is set to {set.date ? fmtDate(`${set.date}T00:00:00`) : 'today'}. You’ll then be warned if you play them again too soon.
+        </p>
       </Modal>
     </div>
   );

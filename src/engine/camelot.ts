@@ -134,29 +134,29 @@ export function harmonicCompatibility(fromKey: string, toKey: string): HarmonicR
   const sameLetter = a.letter === b.letter;
   const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
-  if (sameLetter && step === 0) return { relation: 'same', score: 1, step, label: 'samme key' };
+  if (sameLetter && step === 0) return { relation: 'same', score: 1, step, label: 'same key' };
   if (sameLetter && Math.abs(step) === 1)
-    return { relation: 'adjacent', score: 0.9, step, label: `${sign(step)} på hjulet` };
+    return { relation: 'adjacent', score: 0.9, step, label: `${sign(step)} on the wheel` };
   if (!sameLetter && step === 0)
     return {
       relation: 'relative',
       score: 0.85,
       step,
-      label: a.letter === 'A' ? 'relativ dur (A→B)' : 'relativ moll (B→A)',
+      label: a.letter === 'A' ? 'relative major (A→B)' : 'relative minor (B→A)',
     };
   if (!sameLetter && ((step === 1 && a.letter === 'A') || (step === -1 && a.letter === 'B')))
-    return { relation: 'diagonal', score: 0.6, step, label: `diagonal (${sign(step)} og ${a.letter}→${b.letter})` };
-  if (sameLetter && step === 2) return { relation: 'boost2', score: 0.6, step, label: '+2 på hjulet (energiløft)' };
+    return { relation: 'diagonal', score: 0.6, step, label: `diagonal (${sign(step)} and ${a.letter}→${b.letter})` };
+  if (sameLetter && step === 2) return { relation: 'boost2', score: 0.6, step, label: '+2 on the wheel (energy boost)' };
   if (sameLetter && step === -5)
     // +7 rundt hjulet tilsvarer -5 i normalisert form
-    return { relation: 'boost7', score: 0.5, step: 7, label: '+7 på hjulet (halvtone opp, energiløft)' };
+    return { relation: 'boost7', score: 0.5, step: 7, label: '+7 on the wheel (semitone up, energy boost)' };
 
   const dist = Math.abs(step) + (sameLetter ? 0 : 1);
   return {
     relation: 'clash',
     score: Math.max(0, 0.3 - dist * 0.05),
     step,
-    label: `${sign(step)} på hjulet${sameLetter ? '' : `, ${a.letter}→${b.letter}`} (kræsj)`,
+    label: `${sign(step)} on the wheel${sameLetter ? '' : `, ${a.letter}→${b.letter}`} (clash)`,
   };
 }
 

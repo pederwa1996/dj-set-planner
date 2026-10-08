@@ -11,7 +11,7 @@ export async function fetchJson<T = unknown>(url: string, opts: { signal?: Abort
     try {
       return JSON.parse(text) as T;
     } catch {
-      throw new HttpError(0, 'Svaret var ikke JSON');
+      throw new HttpError(0, 'Response was not JSON');
     }
   } finally {
     clearTimeout(timer);
@@ -53,7 +53,7 @@ export function jsonp<T>(url: string, opts: { timeoutMs?: number; callbackParam?
     };
     const timer = setTimeout(() => {
       cleanup();
-      reject(new Error('Tidsavbrudd (JSONP)'));
+      reject(new Error('Timed out (JSONP)'));
     }, opts.timeoutMs ?? 12000);
     w[name] = (data: T) => {
       cleanup();
@@ -61,7 +61,7 @@ export function jsonp<T>(url: string, opts: { timeoutMs?: number; callbackParam?
     };
     script.onerror = () => {
       cleanup();
-      reject(new Error('JSONP-feil'));
+      reject(new Error('JSONP error'));
     };
     script.src = `${url}${url.includes('?') ? '&' : '?'}${opts.callbackParam ?? 'callback'}=${name}`;
     document.head.appendChild(script);

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
 import type { Track } from '../../db/types';
-import { Button, Chip, EnergyBadge, KeyBadge, Modal, NumberInput } from '../../components/ui';
+import { Button, Chip, EnergyBadge, KeyBadge, Modal, NumberInput, Segmented } from '../../components/ui';
 import { emptyFilter, filterTracks, sortTracks, type LibraryFilter } from '../library/filter';
 
 /** Velg låter fra biblioteket til potten for settet. */
@@ -27,32 +28,39 @@ export function TrackPicker({ open, onClose, tracks, already, onAdd, genres }: {
       open={open}
       onClose={onClose}
       wide
-      title="Legg låter i potten"
+      title="Add tracks to the pool"
       footer={
         <>
           <Button className="mr-auto" onClick={() => finish(addable.map((t) => t.id))} disabled={!addable.length}>
-            Legg til alle {addable.length} viste
+            Add all {addable.length} shown
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            Avbryt
+            Cancel
           </Button>
           <Button variant="primary" disabled={!picked.size} onClick={() => finish([...picked])}>
-            Legg til {picked.size || ''}
+            Add {picked.size || ''}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-3">
-        <input className="input" autoFocus type="search" placeholder="Søk artist, tittel, tagg, key …" value={f.query} onChange={(e) => setF({ ...f, query: e.target.value })} />
+        <div className="relative">
+          <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+          <input className="input w-full pl-10" autoFocus type="search" placeholder="Search artist, title, tag, key…" value={f.query} onChange={(e) => setF({ ...f, query: e.target.value })} />
+        </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted">BPM</span>
-          <NumberInput className="w-20" placeholder="fra" value={f.bpmMin} onChange={(v) => setF({ ...f, bpmMin: v })} />
-          <NumberInput className="w-20" placeholder="til" value={f.bpmMax} onChange={(v) => setF({ ...f, bpmMax: v })} />
-          {(['all', 'owned', 'wishlist'] as const).map((s) => (
-            <Chip key={s} active={f.status === s} onClick={() => setF({ ...f, status: s })}>
-              {s === 'all' ? 'Alle' : s === 'owned' ? '✓ Har filen' : '⬇ Må skaffes'}
-            </Chip>
-          ))}
+          <span className="text-[13px] text-muted">BPM</span>
+          <NumberInput className="w-20" placeholder="from" label="BPM from" value={f.bpmMin} onChange={(v) => setF({ ...f, bpmMin: v })} />
+          <NumberInput className="w-20" placeholder="to" label="BPM to" value={f.bpmMax} onChange={(v) => setF({ ...f, bpmMax: v })} />
+          <Segmented
+            value={f.status}
+            onChange={(status) => setF({ ...f, status })}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'owned', label: 'Owned' },
+              { value: 'wishlist', label: 'To get' },
+            ]}
+          />
         </div>
         {genres.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
@@ -63,32 +71,32 @@ export function TrackPicker({ open, onClose, tracks, already, onAdd, genres }: {
             ))}
           </div>
         )}
-        <ul className="flex max-h-[50dvh] flex-col gap-1 overflow-y-auto">
+        <ul className="flex max-h-[48dvh] flex-col overflow-y-auto">
           {shown.slice(0, 400).map((t) => {
             const inPool = already.has(t.id);
             return (
               <li key={t.id}>
-                <label className={`flex min-h-12 items-center gap-3 rounded-lg px-2 ${inPool ? 'opacity-40' : 'hover:bg-panel2'}`}>
-                  <input type="checkbox" className="h-5 w-5 accent-cyan-400" disabled={inPool} checked={inPool || picked.has(t.id)} onChange={() => toggle(t.id)} />
+                <label className={`flex min-h-12 items-center gap-3 rounded-xl px-2 ${inPool ? 'opacity-40' : 'hover:bg-raised'}`}>
+                  <input type="checkbox" className="h-[18px] w-[18px] accent-[#d97757]" disabled={inPool} checked={inPool || picked.has(t.id)} onChange={() => toggle(t.id)} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate">
+                    <span className="block truncate text-sm">
                       {t.artist} – {t.title}
-                      {t.version && <span className="text-muted"> ({t.version})</span>}
+                      {t.version && <span className="text-muted"> · {t.version}</span>}
                     </span>
                     <span className="text-xs text-muted">
                       {t.genre}
-                      {t.status === 'wishlist' && ' · ⬇ må skaffes'}
-                      {inPool && ' · allerede i potten'}
+                      {t.status === 'wishlist' && ' · to get'}
+                      {inPool && ' · already in pool'}
                     </span>
                   </span>
-                  <span className="w-12 text-right tabular-nums">{t.bpm ? Math.round(t.bpm) : '–'}</span>
-                  <KeyBadge camelot={t.camelot} showMusical={false} />
+                  <span className="w-10 text-right text-sm tabular-nums text-ink2">{t.bpm ? Math.round(t.bpm) : '–'}</span>
+                  <KeyBadge camelot={t.camelot} showMusical={false} link={false} />
                   <EnergyBadge value={t.energy} />
                 </label>
               </li>
             );
           })}
-          {!shown.length && <li className="p-4 text-center text-muted">Ingen låter matcher.</li>}
+          {!shown.length && <li className="p-4 text-center text-sm text-muted">No tracks match.</li>}
         </ul>
       </div>
     </Modal>

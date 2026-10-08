@@ -69,10 +69,10 @@ export interface CsvImportResult {
 export function importCsv(text: string): CsvImportResult {
   const rows = parseCsv(text);
   const empty = { tracks: [], skipped: 0, columns: {}, hasAudioFeatures: { bpm: 0, key: 0, energy: 0 } };
-  if (rows.length < 2) return { ...empty, error: 'Fant ingen rader i filen.' };
+  if (rows.length < 2) return { ...empty, error: 'No rows found in the file.' };
   const cols = detectColumns(rows[0]);
   if (cols.artist === undefined || cols.title === undefined) {
-    return { ...empty, columns: cols, error: `Fant ikke kolonner for artist og tittel. Kolonnene i filen er: ${rows[0].join(', ')}` };
+    return { ...empty, columns: cols, error: `Couldn't find artist and title columns. The file has: ${rows[0].join(', ')}` };
   }
   const get = (r: string[], f: Field) => (cols[f] !== undefined ? (r[cols[f]!] ?? '').trim() : '');
   const tracks: NewTrack[] = [];

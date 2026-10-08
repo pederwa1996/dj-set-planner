@@ -93,7 +93,7 @@ describe('hjulet', () => {
   });
 
   it('gir forklaring', () => {
-    expect(harmonicCompatibility('8A', '9A')!.label).toBe('+1 på hjulet');
+    expect(harmonicCompatibility('8A', '9A')!.label).toBe('+1 on the wheel');
   });
 
   it('lister kompatible keys', () => {

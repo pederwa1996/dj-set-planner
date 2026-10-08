@@ -16,7 +16,7 @@ export interface TempoResult {
   label: string;
 }
 
-const fmt = (n: number, d = 1) => n.toLocaleString('no', { maximumFractionDigits: d });
+const fmt = (n: number, d = 1) => n.toLocaleString('en-GB', { maximumFractionDigits: d });
 
 export function tempoCompatibility(a: number, b: number, maxPct = 6): TempoResult {
   const options: { eff: number; mode: TempoMode }[] = [
@@ -38,8 +38,8 @@ export function tempoCompatibility(a: number, b: number, maxPct = 6): TempoResul
   if (best.mode !== 'same') score *= 0.85;
 
   const sign = delta >= 0 ? '+' : '−';
-  let label = ap < 0.05 ? 'samme BPM' : `${sign}${fmt(Math.abs(delta))} BPM (${fmt(ap)} %)`;
+  let label = ap < 0.05 ? 'same BPM' : `${sign}${fmt(Math.abs(delta))} BPM (${fmt(ap)}%)`;
   if (best.mode !== 'same') label = `half/double-time ${fmt(a)} ↔ ${fmt(b)}${ap >= 0.05 ? `, ${label}` : ''}`;
-  if (ap > maxPct) label += ' — stort tempohopp';
+  if (ap > maxPct) label += ' — big tempo jump';
   return { pct, delta, mode: best.mode, effective: best.eff, score, label };
 }

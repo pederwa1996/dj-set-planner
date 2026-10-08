@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Check, Copy, FileDown, Printer } from 'lucide-react';
 import type { DjSet, Track } from '../../db/types';
 import type { SetAnalysis } from '../../engine/analysis';
 import { camelotToMusical } from '../../engine/camelot';
@@ -15,7 +16,7 @@ async function copy(text: string): Promise<boolean> {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    // Fallback for http på mobil (clipboard-API krever sikker kontekst)
+    // Reserve for http på mobil (clipboard-API krever sikker kontekst)
     const ta = document.createElement('textarea');
     ta.value = text;
     document.body.appendChild(ta);
@@ -26,10 +27,19 @@ async function copy(text: string): Promise<boolean> {
   }
 }
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h3 className="serif text-lg">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
 export function ExportDialog({ open, onClose, set, tracks, analysis }: { open: boolean; onClose: () => void; set: DjSet; tracks: Track[]; analysis: SetAnalysis<Track> }) {
   const [msg, setMsg] = useState('');
   const [printing, setPrinting] = useState(false);
-  const toBuy = tracks.filter((t) => t.status === 'wishlist');
+  const toGet = tracks.filter((t) => t.status === 'wishlist');
   const flash = (m: string) => {
     setMsg(m);
     setTimeout(() => setMsg(''), 2500);
@@ -45,69 +55,74 @@ export function ExportDialog({ open, onClose, set, tracks, analysis }: { open: b
 
   return (
     <>
-      <Modal open={open} onClose={onClose} wide title="Eksport">
-        <div className="flex flex-col gap-6 text-sm">
-          <section className="flex flex-col gap-2">
-            <h3 className="text-base font-semibold">Handleliste — {toBuy.length ? `${toBuy.length} låter må skaffes` : 'du har alle låtene 🎉'}</h3>
-            {toBuy.length > 0 && (
+      <Modal open={open} onClose={onClose} wide title="Export">
+        <div className="flex flex-col gap-8 text-sm">
+          <Section title={toGet.length ? `Shopping list · ${toGet.length} to get` : 'Shopping list · you have every track'}>
+            {toGet.length > 0 && (
               <>
                 <ul className="flex flex-col gap-1">
-                  {toBuy.map((t) => (
-                    <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-panel2 px-3 py-2">
+                  {toGet.map((t) => (
+                    <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line/60 px-3 py-2.5">
                       <span className="min-w-0 flex-1">
                         {t.artist} – {t.title}
-                        {t.version && <span className="text-muted"> ({t.version})</span>}
+                        {t.version && <span className="text-muted"> · {t.version}</span>}
                       </span>
-                      <span className="flex flex-wrap gap-2 text-xs">
+                      <span className="flex flex-wrap gap-1.5 text-xs">
                         {shopLinks(t).map((l) => (
-                          <a key={l.name} href={l.url} target="_blank" rel="noreferrer" className="rounded border border-line px-2 py-1 text-accent hover:border-accent">
+                          <a key={l.name} href={l.url} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-2 py-1 text-ink2 transition hover:border-[#6b6a63] hover:text-ink">
                             {l.name}
                           </a>
                         ))}
                       </span>
-                      <Button className="!min-h-9" onClick={() => updateTrack(t.id, { status: 'owned' })}>
-                        ✓ Har den nå
+                      <Button size="sm" onClick={() => updateTrack(t.id, { status: 'owned' })}>
+                        <Check size={14} /> Got it
                       </Button>
                     </li>
                   ))}
                 </ul>
                 <div>
-                  <Button onClick={async () => flash((await copy(setToText(toBuy))) ? 'Handlelisten er kopiert.' : 'Kunne ikke kopiere.')}>Kopier handlelisten</Button>
+                  <Button size="sm" onClick={async () => flash((await copy(setToText(toGet))) ? 'Shopping list copied.' : 'Couldn’t copy.')}>
+                    <Copy size={14} /> Copy shopping list
+                  </Button>
                 </div>
               </>
             )}
-          </section>
+          </Section>
 
-          <section className="flex flex-col gap-2">
-            <h3 className="text-base font-semibold">Til Spotify</h3>
-            <p className="text-muted">
-              Kopier listen og lim den inn i{' '}
-              <a className="text-accent underline" href="https://www.tunemymusic.com/transfer" target="_blank" rel="noreferrer">
+          <Section title="To Spotify">
+            <p className="text-ink2">
+              Copy the list and paste it into{' '}
+              <a className="text-accent hover:underline" href="https://www.tunemymusic.com/transfer" target="_blank" rel="noreferrer">
                 TuneMyMusic
               </a>{' '}
-              eller{' '}
-              <a className="text-accent underline" href="https://soundiiz.com" target="_blank" rel="noreferrer">
+              or{' '}
+              <a className="text-accent hover:underline" href="https://soundiiz.com" target="_blank" rel="noreferrer">
                 Soundiiz
               </a>{' '}
-              (velg «fra tekst», så Spotify som mål) — da lages spillelisten i riktig rekkefølge.
+              (choose “from text”, then Spotify as the destination) to get a playlist in the right order.
             </p>
             <div className="flex flex-wrap gap-2">
-              <Button variant="primary" onClick={async () => flash((await copy(setToText(tracks))) ? 'Listen er kopiert — lim den inn.' : 'Kunne ikke kopiere.')}>
-                Kopier som «Artist - Tittel»
+              <Button variant="primary" onClick={async () => flash((await copy(setToText(tracks))) ? 'Copied — paste it in.' : 'Couldn’t copy.')}>
+                <Copy size={16} /> Copy as “Artist - Title”
               </Button>
-              <Button onClick={() => downloadText(setToText(tracks), `${safeFilename(set.name)}.txt`)}>Last ned .txt</Button>
+              <Button onClick={() => downloadText(setToText(tracks), `${safeFilename(set.name)}.txt`)}>
+                <FileDown size={16} /> Download .txt
+              </Button>
             </div>
-          </section>
+          </Section>
 
-          <section className="flex flex-col gap-2">
-            <h3 className="text-base font-semibold">Fil og utskrift</h3>
+          <Section title="File and print">
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => downloadText(setToCsv(set, tracks, analysis), `${safeFilename(set.name)}.csv`, 'text/csv;charset=utf-8')}>Last ned CSV</Button>
-              <Button onClick={print}>🖨 Jukselapp (skriv ut / lagre som PDF)</Button>
+              <Button onClick={() => downloadText(setToCsv(set, tracks, analysis), `${safeFilename(set.name)}.csv`, 'text/csv;charset=utf-8')}>
+                <FileDown size={16} /> Download CSV
+              </Button>
+              <Button onClick={print}>
+                <Printer size={16} /> Cheat sheet (print / save as PDF)
+              </Button>
             </div>
-            <p className="text-xs text-muted">M3U og Rekordbox-XML kommer når appen kan knytte låtene til lydfiler.</p>
-          </section>
-          {msg && <p className="rounded-lg bg-panel2 px-3 py-2">{msg}</p>}
+            <p className="text-xs text-muted">M3U and Rekordbox XML will come once tracks can be linked to audio files.</p>
+          </Section>
+          {msg && <p className="rounded-xl bg-raised px-4 py-3">{msg}</p>}
         </div>
       </Modal>
       {printing && createPortal(<CheatSheet set={set} tracks={tracks} analysis={analysis} />, document.body)}
@@ -121,7 +136,9 @@ export function CheatSheet({ set, tracks, analysis }: { set: DjSet; tracks: Trac
     <div className="print-area">
       <h1>{set.name}</h1>
       <p className="meta">
-        {[set.date && new Date(set.date).toLocaleDateString('no', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), set.venue, `${tracks.length} låter`, `ca. ${formatDuration(analysis.totalSec)}`, `snittscore ${analysis.avgScore}`].filter(Boolean).join(' · ')}
+        {[set.date && new Date(`${set.date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), set.venue, `${tracks.length} tracks`, `~${formatDuration(analysis.totalSec)}`, `flow ${analysis.avgScore}`]
+          .filter(Boolean)
+          .join(' · ')}
       </p>
       {set.notes && <p className="meta">{set.notes}</p>}
       <table>
@@ -129,7 +146,7 @@ export function CheatSheet({ set, tracks, analysis }: { set: DjSet; tracks: Trac
           <tr>
             <th>#</th>
             <th>Start</th>
-            <th>Låt</th>
+            <th>Track</th>
             <th>BPM</th>
             <th>Key</th>
             <th>E</th>
@@ -147,7 +164,7 @@ export function CheatSheet({ set, tracks, analysis }: { set: DjSet; tracks: Trac
                 <td>
                   <strong>{t.artist}</strong> – {t.title}
                   {t.version ? ` (${t.version})` : ''}
-                  {t.status === 'wishlist' ? ' ⬇' : ''}
+                  {t.status === 'wishlist' ? ' ↓' : ''}
                 </td>
                 <td>{t.bpm ?? ''}</td>
                 <td>
