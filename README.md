@@ -70,8 +70,9 @@ Confident matches fill in empty fields automatically; your own values are never 
 **Browse** — explore by key (clickable Camelot wheel), genre, tempo range, energy, tags, mood and decade. Click any key badge anywhere in the app to see every track in that key and the keys that mix well with it (±1, relative, diagonal, energy boosts).
 
 **Building a set**
-1. **New set**, then add tracks to its pool (from the library, or “Add to a set” from any Browse page).
-   - **From a Spotify playlist:** export it at [exportify.net](https://exportify.net) and drag the CSV onto the **Sets** page (or click **From Exportify CSV**) — it becomes a new set named after the playlist. Inside a set, drag a CSV onto the page (or **Import CSV**) to add it. Choose “Let the engine order them” (into the pool) or “Keep playlist order”. Tracks already in your library are reused, and BPM/key/energy from the file are kept.
+1. **New set** — give it a name, a date and a **length** (30/45/60/90/120 min, your own, or no limit) and choose whole tracks or a fixed play time per track. The dialog shows roughly how many tracks that is. Then add tracks to its pool (from the library, or “Add to a set” from any Browse page).
+   - The engine fills the set to that length with the tracks that flow best and keeps the rest of the pool in reserve. Before you build, and in the suggestions, you can see how many tracks fit — pick a longer set or **Use all tracks** if you want every one in. Your last choice is remembered for the next set.
+   - **From a Spotify playlist:** export it at [exportify.net](https://exportify.net) and drag the CSV onto the **Sets** page (or click **From Exportify CSV**) — it becomes a new set named after the playlist. Inside a set, drag a CSV onto the page (or **Import CSV**) to add it. Choose “Let the engine order them” (into the pool) or “Keep playlist order”, and the set length. Tracks already in your library are reused, and BPM/key/energy from the file are kept.
 2. **Build order** — the engine returns three different options; pick one.
 3. Fine-tune: drag rows (desktop) or use ↑/↓, lock tracks to their position, rebuild around them. **Ctrl+Z** undoes.
 4. Every transition gets a score, an icon and an explanation, e.g. “8A → 9A: +1 on the wheel · +2 BPM (1.6%) · energy 6 → 7 — perfect”. Weak ones offer **Find bridge track**.

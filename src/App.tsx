@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Compass, Home as HomeIcon, Keyboard, Library, ListMusic, Menu, Plus, Settings, Upload, X } from 'lucide-react';
 import { db, requestPersistentStorage } from './db/db';
-import { createSet } from './db/sets';
 import { makeDupKey } from './lib/normalize';
-import { href, navigate, useRoute, type Route } from './lib/router';
-import { closeHelp, closeImport, closeTrack, openHelp, openImport, openTrack, useUi, anyDialogOpen } from './lib/uiStore';
+import { href, useRoute, type Route } from './lib/router';
+import { closeHelp, closeImport, closeNewSet, closeTrack, openHelp, openImport, openNewSet, openTrack, useUi, anyDialogOpen } from './lib/uiStore';
 import { useHotkeys } from './lib/useHotkeys';
 import { cancelBulkLookup, dismissBulkLookup, useBulkLookup } from './sources/bulkStore';
 import { startSync, useSync } from './sync/syncStore';
@@ -21,6 +20,7 @@ import { SetEditor } from './features/sets/SetEditor';
 import { SettingsView } from './features/settings/SettingsView';
 import { ImportDialog } from './features/import/ImportDialog';
 import { TrackEditor } from './features/library/TrackEditor';
+import { NewSetDialog } from './features/sets/NewSetDialog';
 import { collectValues } from './features/library/filter';
 
 export default function App() {
@@ -137,9 +137,9 @@ function Sidebar({ route, onClose }: { route: Route; onClose?: () => void }) {
 
       <button
         type="button"
-        onClick={async () => {
-          const s = await createSet(`New set · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`);
-          navigate({ name: 'set', id: s.id });
+        onClick={() => {
+          onClose?.();
+          openNewSet();
         }}
         className="mb-2 flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm text-ink transition hover:bg-raised/60"
       >
@@ -209,6 +209,7 @@ function GlobalDialogs() {
   return (
     <>
       <ImportDialog open={ui.importOpen} onClose={closeImport} existing={all} genres={values.genres} tags={values.tags} />
+      <NewSetDialog open={ui.newSetOpen} onClose={closeNewSet} />
       <TrackEditor open={ui.editing !== undefined} track={ui.editing ?? null} onClose={closeTrack} suggestions={values} duplicateOf={(a, t, v) => byDupKey.get(makeDupKey(a, t, v)) ?? []} />
       <Modal open={ui.helpOpen} onClose={closeHelp} title="Keyboard shortcuts">
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">

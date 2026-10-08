@@ -1,3 +1,4 @@
+import { Clock } from 'lucide-react';
 import type { Track } from '../../db/types';
 import type { SequenceResult } from '../../engine/sequencer';
 import { Button, Modal } from '../../components/ui';
@@ -14,9 +15,50 @@ function Sparkline({ values }: { values: (number | null)[] }) {
   );
 }
 
-export function AlternativesDialog({ open, onClose, results, byId, onPick, computing, targetSec }: { open: boolean; onClose: () => void; results: SequenceResult[]; byId: Map<string, Track>; onPick: (r: SequenceResult) => void; computing: boolean; targetSec: number | null }) {
+export function AlternativesDialog({
+  open,
+  onClose,
+  results,
+  byId,
+  onPick,
+  computing,
+  targetSec,
+  poolSize,
+  onUseAll,
+  onChangeLength,
+}: {
+  open: boolean;
+  onClose: () => void;
+  results: SequenceResult[];
+  byId: Map<string, Track>;
+  onPick: (r: SequenceResult) => void;
+  computing: boolean;
+  targetSec: number | null;
+  /** Antall låter motoren kunne velge fra */
+  poolSize: number;
+  onUseAll: () => void;
+  onChangeLength: () => void;
+}) {
+  const used = results.length ? Math.max(...results.map((r) => r.order.length)) : 0;
+  const leftOut = targetSec && !computing ? poolSize - used : 0;
   return (
     <Modal open={open} onClose={onClose} wide title="Suggested orders">
+      {leftOut > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-line bg-sidebar/60 px-4 py-3 text-[13px] text-ink2">
+          <Clock size={15} className="shrink-0 text-muted" />
+          <span className="min-w-0 flex-1 basis-64">
+            To fill {Math.round(targetSec! / 60)} min, the options use up to {used} of your {poolSize} tracks. The other {leftOut} stay in the pool as reserves.
+          </span>
+          <span className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={onChangeLength}>
+              Change length
+            </Button>
+            <Button size="sm" onClick={onUseAll}>
+              Use all {poolSize} tracks
+            </Button>
+          </span>
+        </div>
+      )}
       {computing ? (
         <p className="py-12 text-center text-muted">Working out the best orders…</p>
       ) : !results.length ? (

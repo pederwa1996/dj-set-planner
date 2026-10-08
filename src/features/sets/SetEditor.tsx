@@ -9,7 +9,7 @@ import { analyzeSet } from '../../engine/analysis';
 import { buildSequences, type Lock as SeqLock, type SequenceResult } from '../../engine/sequencer';
 import { CURVE_PRESETS } from '../../engine/energy';
 import { CamelotWheel } from '../../components/CamelotWheel';
-import { Button, EmptyState, EnergyBadge, EnergyPicker, Field, IconButton, KeyBadge, Modal, NumberInput, Segmented, fmtDate } from '../../components/ui';
+import { Button, EmptyState, EnergyBadge, EnergyPicker, Field, IconButton, KeyBadge, Modal, NumberInput, fmtDate } from '../../components/ui';
 import { formatDuration } from '../../lib/normalize';
 import { href } from '../../lib/router';
 import { useLocalStorage } from '../../lib/useLocalStorage';
@@ -25,6 +25,8 @@ import { TrackPicker } from './TrackPicker';
 import { ImportToSetDialog, type ImportToSetResult } from './ImportToSetDialog';
 import { DropOverlay } from '../../components/DropOverlay';
 import { useFileDrop } from '../../lib/useFileDrop';
+import { SetLengthFields } from './SetLengthFields';
+import { describeLength, estimateLength } from './setLength';
 import { readPlaylistFile, type PlaylistFile } from '../../importers/playlistFile';
 
 type Snapshot = Pick<DjSet, 'slots' | 'poolIds'>;
@@ -174,14 +176,19 @@ export function SetEditor({ setId }: { setId: string }) {
   const warningsAt = (i: number) => [...analysis.warnings.filter((w) => w.index === i).map((w) => w.message), ...(dupWarnings.has(i) ? [dupWarnings.get(i)!] : [])];
   const values = collectValues(allTracks);
 
-  function build() {
-    // Samme låt (artist+tittel+versjon) skal bare være med én gang: behold den som er i settet/eies
-    const candidates = Array.from(new Set([...set.slots.map((s) => s.trackId), ...set.poolIds]))
-      .map((id) => byId.get(id))
-      .filter((t): t is Track => !!t)
-      .sort((a, b) => Number(inSet.has(b.id)) - Number(inSet.has(a.id)) || Number(b.status === 'owned') - Number(a.status === 'owned'));
-    const seenDup = new Set<string>();
-    const pool = candidates.filter((t) => (seenDup.has(t.dupKey) ? false : (seenDup.add(t.dupKey), true)));
+  // Samme låt (artist+tittel+versjon) skal bare være med én gang: behold den som er i settet/eies
+  const seenDup = new Set<string>();
+  const buildPool = Array.from(new Set([...set.slots.map((s) => s.trackId), ...set.poolIds]))
+    .map((id) => byId.get(id))
+    .filter((t): t is Track => !!t)
+    .sort((a, b) => Number(inSet.has(b.id)) - Number(inSet.has(a.id)) || Number(b.status === 'owned') - Number(a.status === 'owned'))
+    .filter((t) => (seenDup.has(t.dupKey) ? false : (seenDup.add(t.dupKey), true)));
+  const poolDurations = buildPool.map((t) => t.durationSec);
+
+  /** Bygg rekkefølger. `over` brukes når en innstilling endres og vi bygger på nytt med en gang. */
+  function build(over: Partial<DjSet> = {}) {
+    const cfg = { ...set, ...over };
+    const pool = buildPool;
     if (!pool.length) {
       setPickerOpen(true);
       return;
@@ -190,7 +197,7 @@ export function SetEditor({ setId }: { setId: string }) {
     setAltOpen(true);
     setComputing(true);
     setTimeout(() => {
-      const res = buildSequences(pool, { curve: set.curve, targetSec, locks, alternatives: 3, artistGap: set.artistGap, playSec, maxTempoPct: set.maxTempoPct });
+      const res = buildSequences(pool, { curve: cfg.curve, targetSec: cfg.targetMinutes ? cfg.targetMinutes * 60 : null, locks, alternatives: 3, artistGap: cfg.artistGap, playSec: playSecFor(cfg), maxTempoPct: cfg.maxTempoPct });
       setAlts(res);
       setComputing(false);
     }, 30);
@@ -231,7 +238,6 @@ export function SetEditor({ setId }: { setId: string }) {
       };
     }, true);
 
-  const choice = (on: boolean) => `min-h-10 rounded-xl border px-3 text-[13px] transition ${on ? 'border-accent/50 bg-accent-soft text-accent' : 'border-line text-ink2 hover:border-[#5c5752] hover:text-ink'}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -289,7 +295,7 @@ export function SetEditor({ setId }: { setId: string }) {
 
       {/* Verktøylinje */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="primary" onClick={build}>
+        <Button variant="primary" onClick={() => build()}>
           <Wand2 size={16} /> Build order
         </Button>
         <Button onClick={() => setPickerOpen(true)}>
@@ -319,7 +325,7 @@ export function SetEditor({ setId }: { setId: string }) {
       {!showSettings && (
         <button type="button" onClick={() => setShowSettings(true)} className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 self-start rounded-lg px-1 text-[13px] text-muted transition hover:text-ink">
           <Settings2 size={14} />
-          <span>{set.targetMinutes ? `${set.targetMinutes} min` : 'Every track'}</span>·<span>{set.curve.preset === 'custom' ? 'Custom curve' : CURVE_PRESETS[set.curve.preset].label}</span>·
+          <span className="text-ink2">{set.targetMinutes ? `${set.targetMinutes} min set` : 'No length limit'}</span>·<span>{set.curve.preset === 'custom' ? 'Custom curve' : CURVE_PRESETS[set.curve.preset].label}</span>·
           <span>{set.playMode === 'full' ? 'Whole tracks' : `${set.fixedMinutes} min per track`}</span>·<span className="underline-offset-2 hover:underline">Edit</span>
         </button>
       )}
@@ -327,37 +333,7 @@ export function SetEditor({ setId }: { setId: string }) {
       {showSettings && (
         <div className="card grid grid-cols-1 gap-6 p-5 lg:grid-cols-2">
           <div className="flex flex-col gap-5">
-            <Field label="Target length" group>
-              <div className="flex flex-wrap items-center gap-2">
-                {[45, 60, 90, 120].map((m) => (
-                  <button key={m} type="button" onClick={() => update((s) => ({ ...s, targetMinutes: m }))} className={choice(set.targetMinutes === m)}>
-                    {m} min
-                  </button>
-                ))}
-                <NumberInput className="w-24" placeholder="min" label="Custom length in minutes" value={set.targetMinutes} onChange={(v) => update((s) => ({ ...s, targetMinutes: v && v > 0 ? v : null }))} />
-                <button type="button" onClick={() => update((s) => ({ ...s, targetMinutes: null }))} className={choice(set.targetMinutes == null)}>
-                  Use every track
-                </button>
-              </div>
-            </Field>
-            <Field label="Play time per track" group hint={set.playMode === 'full' ? 'Track length minus ~45 seconds of mixing. Tracks without a length count as 5:30.' : 'For when you only play part of each track.'}>
-              <div className="flex flex-wrap items-center gap-2">
-                <Segmented
-                  value={set.playMode}
-                  onChange={(playMode) => update((s) => ({ ...s, playMode }))}
-                  options={[
-                    { value: 'full', label: 'Whole track' },
-                    { value: 'fixed', label: 'Fixed time' },
-                  ]}
-                />
-                {set.playMode === 'fixed' && (
-                  <>
-                    <NumberInput className="w-20" label="Minutes per track" value={set.fixedMinutes} onChange={(v) => v && v > 0 && update((s) => ({ ...s, fixedMinutes: v }))} />
-                    <span className="text-sm text-muted">min</span>
-                  </>
-                )}
-              </div>
-            </Field>
+            <SetLengthFields value={set} onChange={({ targetMinutes, playMode, fixedMinutes }) => update((s) => ({ ...s, targetMinutes, playMode, fixedMinutes }))} durations={poolDurations} />
             <div className="grid grid-cols-2 gap-4">
               <Field label="Max tempo change" hint="per transition, in %">
                 <NumberInput className="w-24" value={set.maxTempoPct} onChange={(v) => v && v > 0 && update((s) => ({ ...s, maxTempoPct: v }))} />
@@ -399,10 +375,10 @@ export function SetEditor({ setId }: { setId: string }) {
           <div className="flex min-w-0 flex-col gap-3">
             {!slotTracks.length && (
               <EmptyState
-                title={`${poolTracks.length} tracks in the pool`}
+                title={`${buildPool.length} track${buildPool.length === 1 ? '' : 's'} in the pool`}
                 actions={
                   <>
-                    <Button variant="primary" onClick={build}>
+                    <Button variant="primary" onClick={() => build()}>
                       <Wand2 size={16} /> Build order
                     </Button>
                     <Button onClick={() => applyOrder(poolTracks.map((t) => t.id))}>Add all as they are</Button>
@@ -410,6 +386,12 @@ export function SetEditor({ setId }: { setId: string }) {
                 }
               >
                 No order yet. Let the engine suggest one, or add them in the current order and arrange them yourself.
+                <span className="mt-3 flex flex-col items-center gap-1 rounded-xl bg-sidebar/70 px-4 py-3 text-[13px] text-ink2">
+                  {describeLength(estimateLength(poolDurations, set), set)}
+                  <button type="button" onClick={() => setShowSettings(true)} className="text-accent hover:underline">
+                    Change set length
+                  </button>
+                </span>
               </EmptyState>
             )}
             <ol className="flex flex-col">
@@ -622,6 +604,16 @@ export function SetEditor({ setId }: { setId: string }) {
         byId={byId}
         computing={computing}
         targetSec={targetSec}
+        poolSize={buildPool.length}
+        onUseAll={() => {
+          update((s) => ({ ...s, targetMinutes: null }));
+          build({ targetMinutes: null });
+        }}
+        onChangeLength={() => {
+          setAltOpen(false);
+          setShowSettings(true);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         onPick={(r) => {
           applyOrder(r.order);
           setAltOpen(false);

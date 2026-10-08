@@ -10,6 +10,8 @@ import { makeDupKey } from '../../lib/normalize';
 import { href } from '../../lib/router';
 import { useSettings } from '../../lib/settings';
 import { startBulkLookup } from '../../sources/bulkStore';
+import { SetLengthFields } from './SetLengthFields';
+import { getLengthDefaults, saveLengthDefaults, type LengthChoice } from './setLength';
 
 export type PlacementMode = 'pool' | 'order';
 
@@ -17,6 +19,8 @@ export interface ImportToSetResult {
   ids: string[];
   mode: PlacementMode;
   name: string;
+  /** Lengde og spilletid for et nytt set (null når låtene legges i et eksisterende set) */
+  length: LengthChoice | null;
 }
 
 /** Bekreft import av en spillelistefil (Exportify-CSV) til et nytt eller eksisterende set. */
@@ -38,11 +42,13 @@ export function ImportToSetDialog({
   const [status, setStatus] = useState<TrackStatus>('wishlist');
   const [lookup, setLookup] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [length, setLength] = useState<LengthChoice>(getLengthDefaults);
 
   useEffect(() => {
     if (file) {
       setName(file.name);
       setBusy(false);
+      setLength(getLengthDefaults());
     }
   }, [file]);
 
@@ -50,14 +56,16 @@ export function ImportToSetDialog({
     if (!file || !tracks) return null;
     const existing = new Set(tracks.map((t) => t.dupKey));
     const keys = new Set<string>();
+    const durations: (number | null)[] = [];
     let inLibrary = 0;
     for (const t of file.tracks) {
       const k = makeDupKey(t.artist, t.title, t.version ?? '');
       if (keys.has(k)) continue;
       keys.add(k);
+      durations.push(t.durationSec ?? null);
       if (existing.has(k)) inLibrary++;
     }
-    return { unique: keys.size, inLibrary, doubles: file.tracks.length - keys.size };
+    return { unique: keys.size, inLibrary, doubles: file.tracks.length - keys.size, durations };
   }, [file, tracks]);
 
   async function confirm() {
@@ -70,7 +78,8 @@ export function ImportToSetDialog({
         const missing = added.filter((t) => t && (t.bpm == null || t.camelot == null) && !t.online).map((t) => t!.id);
         if (missing.length) startBulkLookup(missing);
       }
-      await onConfirm({ ids: r.ids, mode, name: name.trim() || file.name });
+      if (forNewSet) saveLengthDefaults(length);
+      await onConfirm({ ids: r.ids, mode, name: name.trim() || file.name, length: forNewSet ? length : null });
       onClose();
     } finally {
       setBusy(false);
@@ -148,6 +157,8 @@ export function ImportToSetDialog({
               {mode === 'pool' ? 'The tracks go into the pool. Press “Build order” to get three suggestions by key, BPM and energy.' : 'The tracks go straight into the set in the same order as the playlist. You can still rebuild later.'}
             </span>
           </Field>
+
+          {forNewSet && <SetLengthFields value={length} onChange={setLength} durations={summary?.durations} keepAll={mode === 'order'} />}
 
           <Field label="New tracks are" group hint="Tracks already in your library keep their status.">
             <Segmented

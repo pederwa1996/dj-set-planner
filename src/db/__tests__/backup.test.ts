@@ -8,7 +8,7 @@ it('backup og gjenoppretting gir samme data', async () => {
   const b = new DjDatabase(`b-${Math.random()}`);
   await addTrack({ artist: 'X', title: 'Y', bpm: 128, camelot: '8A', tags: ['vokal'] }, a);
   await addTrack({ artist: 'Z', title: 'W', status: 'wishlist' }, b);
-  await createSet('Lørdag', a);
+  await createSet('Lørdag', {}, a);
   const backup = JSON.parse(JSON.stringify(await createBackup(a)));
 
   expect(await restoreBackup(backup, 'merge', b)).toBe(1);

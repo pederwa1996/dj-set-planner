@@ -4,6 +4,7 @@ import { CalendarDays, Copy, Download, FileSpreadsheet, ListMusic, Plus, Trash2 
 import { db } from '../../db/db';
 import type { DjSet, Track } from '../../db/types';
 import { createSet, deleteSet, duplicateSet, playSecFor, saveSet } from '../../db/sets';
+import { openNewSet } from '../../lib/uiStore';
 import { analyzeSet } from '../../engine/analysis';
 import { Button, EmptyState, IconButton, Modal, PageHeader, fmtDate } from '../../components/ui';
 import { formatDuration } from '../../lib/normalize';
@@ -29,13 +30,10 @@ export function SetsView() {
     const a = analyzeSet(ts, { curve: s.curve, playSec: playSecFor(s), maxTempoPct: s.maxTempoPct });
     return { n: ts.length, total: a.totalSec, avg: a.avgScore, gaps: a.gaps.length, toGet: ts.filter((t) => t.status === 'wishlist').length };
   };
-  const newSet = async () => {
-    const s = await createSet(`New set · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`);
-    navigate({ name: 'set', id: s.id });
-  };
+  const newSet = openNewSet;
   // Nytt set fra en Exportify-CSV: låtene i potten, eller rett inn i spillelistens rekkefølge
-  const setFromPlaylist = async ({ ids, mode, name }: ImportToSetResult) => {
-    const s = await createSet(name);
+  const setFromPlaylist = async ({ ids, mode, name, length }: ImportToSetResult) => {
+    const s = await createSet(name, length ?? {});
     await saveSet({ ...s, poolIds: ids, slots: mode === 'order' ? ids.map((trackId) => ({ trackId, locked: false })) : [] });
     navigate({ name: 'set', id: s.id });
   };

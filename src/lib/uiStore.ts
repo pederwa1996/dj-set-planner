@@ -7,9 +7,10 @@ interface UiState {
   /** undefined = lukket, null = ny låt, Track = rediger */
   editing: Track | null | undefined;
   helpOpen: boolean;
+  newSetOpen: boolean;
 }
 
-let state: UiState = { importOpen: false, editing: undefined, helpOpen: false };
+let state: UiState = { importOpen: false, editing: undefined, helpOpen: false, newSetOpen: false };
 const listeners = new Set<() => void>();
 const set = (s: Partial<UiState>) => {
   state = { ...state, ...s };
@@ -22,6 +23,8 @@ export const openTrack = (t: Track | null) => set({ editing: t });
 export const closeTrack = () => set({ editing: undefined });
 export const openHelp = () => set({ helpOpen: true });
 export const closeHelp = () => set({ helpOpen: false });
+export const openNewSet = () => set({ newSetOpen: true });
+export const closeNewSet = () => set({ newSetOpen: false });
 
 export function useUi(): UiState {
   return useSyncExternalStore(

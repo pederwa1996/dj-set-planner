@@ -54,7 +54,7 @@ afterEach(async () => {
 describe('synkronisering mellom to enheter', () => {
   it('låter og sets fra én enhet dukker opp på den andre', async () => {
     await addTrack({ artist: 'Chicane', title: 'Saltwater', bpm: 136, camelot: '6A' }, a.db);
-    await createSet('Saturday', a.db);
+    await createSet('Saturday', {}, a.db);
     expect((await a.sync()).pushed).toBe(2);
     const r = await b.sync();
     expect(r.applied).toBe(2);
@@ -78,7 +78,7 @@ describe('synkronisering mellom to enheter', () => {
 
   it('slettinger synkroniseres', async () => {
     const t = await addTrack({ artist: 'A', title: 'Gone' }, a.db);
-    const s = await createSet('Old set', a.db);
+    const s = await createSet('Old set', {}, a.db);
     await a.sync();
     await b.sync();
     expect(await b.db.tracks.count()).toBe(1);

@@ -37,8 +37,10 @@ export function playSecFor(set: Pick<DjSet, 'playMode' | 'fixedMinutes'>) {
 
 export const pairKey = (fromId: string, toId: string) => `${fromId}>${toId}`;
 
-export async function createSet(name: string, database: DjDatabase = defaultDb): Promise<DjSet> {
-  const s = emptySet(name);
+export type NewSetFields = Partial<Omit<DjSet, 'id' | 'name' | 'createdAt' | 'updatedAt'>>;
+
+export async function createSet(name: string, init: NewSetFields = {}, database: DjDatabase = defaultDb): Promise<DjSet> {
+  const s = { ...emptySet(name), ...init };
   await database.sets.add(s);
   return s;
 }

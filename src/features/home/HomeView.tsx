@@ -4,15 +4,15 @@ import { AlertCircle, ArrowRight, CalendarDays, Cloud, CloudOff, Compass, Downlo
 import { db } from '../../db/db';
 import type { DjSet, Track } from '../../db/types';
 import { addTracks } from '../../db/tracks';
-import { createSet, playSecFor } from '../../db/sets';
+import { playSecFor } from '../../db/sets';
 import { analyzeSet } from '../../engine/analysis';
 import { Logo } from '../../components/Logo';
 import { TrackRow } from '../../components/TrackRow';
 import { Button, fmtDate } from '../../components/ui';
 import { formatDuration } from '../../lib/normalize';
-import { href, navigate, type Route } from '../../lib/router';
+import { href, type Route } from '../../lib/router';
 import { useSettings } from '../../lib/settings';
-import { openImport, openTrack } from '../../lib/uiStore';
+import { openImport, openNewSet, openTrack } from '../../lib/uiStore';
 import { startBulkLookup, useBulkLookup } from '../../sources/bulkStore';
 import { needsCheck } from '../library/filter';
 import { useSync } from '../../sync/syncStore';
@@ -105,10 +105,7 @@ export function HomeView() {
   const missing = tracks.filter((t) => t.bpm == null || t.camelot == null);
   const noEnergy = tracks.filter((t) => t.energy == null).length;
   const recent = [...tracks].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
-  const newSet = async () => {
-    const s = await createSet(`New set · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`);
-    navigate({ name: 'set', id: s.id });
-  };
+  const newSet = openNewSet;
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-10">

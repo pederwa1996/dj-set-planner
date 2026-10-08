@@ -1,16 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ListPlus, Plus } from 'lucide-react';
+import { Clock, ListPlus, Plus } from 'lucide-react';
 import { db } from '../../db/db';
 import { createSet, saveSet } from '../../db/sets';
 import { Button, Modal, fmtDate } from '../../components/ui';
 import { navigate } from '../../lib/router';
+import { LENGTH_PRESETS, describeLength, estimateLength, getLengthDefaults, saveLengthDefaults } from './setLength';
 
 /** Legg en gruppe låter i potten til et set (eller et nytt set). */
 export function AddToSetDialog({ open, onClose, trackIds, defaultName }: { open: boolean; onClose: () => void; trackIds: string[]; defaultName?: string }) {
   const sets = useLiveQuery(() => db.sets.orderBy('updatedAt').reverse().toArray(), []);
   const [done, setDone] = useState<{ id: string; name: string; added: number } | null>(null);
   const [name, setName] = useState('');
+  const [targetMinutes, setTargetMinutes] = useState<number | null>(() => getLengthDefaults().targetMinutes);
+  const durations = useLiveQuery(async () => (open ? (await db.tracks.bulkGet(trackIds)).map((t) => t?.durationSec ?? null) : []), [open, trackIds]);
+  useEffect(() => {
+    if (open) setTargetMinutes(getLengthDefaults().targetMinutes);
+  }, [open]);
+  const length = { ...getLengthDefaults(), targetMinutes };
+  const lengthOptions = targetMinutes != null && !LENGTH_PRESETS.includes(targetMinutes) ? [...LENGTH_PRESETS, targetMinutes].sort((a, b) => a - b) : LENGTH_PRESETS;
 
   const addTo = async (id: string) => {
     const s = await db.sets.get(id);
@@ -53,17 +61,34 @@ export function AddToSetDialog({ open, onClose, trackIds, defaultName }: { open:
       ) : (
         <div className="flex flex-col gap-4">
           <form
-            className="flex gap-2"
+            className="flex flex-col gap-2"
             onSubmit={async (e) => {
               e.preventDefault();
-              const s = await createSet(name.trim() || defaultName || 'New set');
+              saveLengthDefaults(length);
+              const s = await createSet(name.trim() || defaultName || 'New set', length);
               await addTo(s.id);
             }}
           >
-            <input className="input flex-1" placeholder={defaultName ? `New set: ${defaultName}` : 'New set name'} value={name} onChange={(e) => setName(e.target.value)} aria-label="New set name" />
-            <Button type="submit" variant="primary">
-              <Plus size={16} /> New set
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <input className="input min-w-0 flex-1 basis-48" placeholder={defaultName ? `New set: ${defaultName}` : 'New set name'} value={name} onChange={(e) => setName(e.target.value)} aria-label="New set name" />
+              <select className="input w-auto" value={targetMinutes ?? 'none'} onChange={(e) => setTargetMinutes(e.target.value === 'none' ? null : Number(e.target.value))} aria-label="Set length">
+                {lengthOptions.map((m) => (
+                  <option key={m} value={m}>
+                    {m} min
+                  </option>
+                ))}
+                <option value="none">No limit</option>
+              </select>
+              <Button type="submit" variant="primary">
+                <Plus size={16} /> New set
+              </Button>
+            </div>
+            {durations && (
+              <p className="flex gap-2 text-xs text-muted">
+                <Clock size={13} className="mt-px shrink-0" />
+                {describeLength(estimateLength(durations, length), length)}
+              </p>
+            )}
           </form>
           {sets && sets.length > 0 && (
             <ul className="flex flex-col gap-1">
