@@ -1,7 +1,7 @@
 import { emptyTrack } from '../../db/tracks';
 import type { Track } from '../../db/types';
 import { makeDupKey } from '../../lib/normalize';
-import { discoverBridges, type DiscoverDeps } from '../discover';
+import { discoverBridges, discoverForSet, setSeedArtists, suggestGenre, type DiscoverDeps } from '../discover';
 
 const t = (p: Partial<Track>): Track => {
   const base = { ...emptyTrack(), artist: 'A', title: 'T', ...p };
@@ -71,5 +71,87 @@ describe('brolåter fra nettet', () => {
     expect(stopped.suggestions).toEqual([]);
     const noKeys = await discoverBridges(from, to, [], { deps: { ...deps(), analyse: async () => ({ bpm: 136, camelot: null }) } });
     expect(noKeys.notes.join()).toMatch(/GetSongBPM key/);
+  });
+});
+
+describe('forslag til et set fra nettet', () => {
+  const set = [
+    t({ artist: 'Chicane', title: 'Saltwater', bpm: 134, camelot: '8A', energy: 6, genre: 'Trance' }),
+    t({ artist: 'Chicane feat. Bryan Adams', title: "Don't Give Up", bpm: 132, camelot: '8A', genre: 'Trance' }),
+    t({ artist: 'Paul van Dyk', title: 'For An Angel', bpm: 138, camelot: '10A', energy: 8, genre: 'Trance' }),
+  ];
+  const PLAYLISTS: Record<string, unknown> = {
+    '/search/playlist?limit=10&q=trance': {
+      data: [
+        { id: 900, title: 'Chill vibes', nb_tracks: 50 },
+        { id: 901, title: 'Trance Classics', nb_tracks: 80 },
+        { id: 902, title: 'Uplifting Trance', nb_tracks: 40 },
+      ],
+    },
+    '/playlist/901/tracks?limit=40': {
+      data: [
+        { id: 111, title: 'Out of the Blue', title_short: 'Out of the Blue', artist: { name: 'System F' }, preview: 'p111' },
+        { id: 101, title: 'Saltwater', title_short: 'Saltwater', artist: { name: 'Chicane' } },
+      ],
+    },
+    '/playlist/902/tracks?limit=40': { data: [{ id: 112, title: 'Seven Cities', title_short: 'Seven Cities', artist: { name: 'Solarstone' } }, { id: 120, title: 'Blah Blah Blah', title_short: 'Blah Blah Blah', artist: { name: 'Armin van Buuren' } }] },
+    '/playlist/900/tracks?limit=40': { data: [{ id: 130, title: 'Unknown', title_short: 'Unknown', artist: { name: 'Nobody' } }] },
+  };
+  const genreDeps = (log: string[] = []): DiscoverDeps => ({
+    ...deps(log),
+    async deezer<T>(path: string) {
+      log.push(path);
+      path = path.replace(/\/top\?limit=\d+$/, '/top?limit=4');
+      const all = { ...DEEZER, ...PLAYLISTS };
+      if (!(path in all)) throw new Error('not found ' + path);
+      return all[path] as T;
+    },
+  });
+
+  it('velger artistene som går igjen mest, og vanligste sjanger', () => {
+    expect(setSeedArtists(set)).toEqual(['Chicane', 'Paul van Dyk']);
+    expect(suggestGenre(set)).toBe('Trance');
+    expect(suggestGenre([], [t({ genre: 'House' })])).toBe('House');
+    expect(suggestGenre([])).toBe('');
+  });
+
+  it('lignende artister: rangerer etter hvor godt låtene mikser med settet', async () => {
+    const log: string[] = [];
+    const r = await discoverForSet(set, set, { mode: 'similar', deps: genreDeps(log) });
+    expect(log.filter((p) => p.includes('/top?')).every((p) => p.endsWith('limit=3'))).toBe(true);
+    const titles = r.suggestions.map((s) => s.track.title);
+    expect(titles).toContain('Out of the Blue');
+    expect(titles).toContain('Seven Cities');
+    expect(titles).not.toContain('Blah Blah Blah'); // 3B, 130 BPM: passer ikke
+    expect(titles).not.toContain('Saltwater'); // finnes i biblioteket
+    const seven = r.suggestions.find((s) => s.track.title === 'Seven Cities')!;
+    expect(seven.fit).toBeGreaterThanOrEqual(75);
+    expect(seven.matches).toBeGreaterThanOrEqual(2);
+    expect(seven.best).toMatchObject({ camelot: '8A' });
+    // sortert etter passform
+    expect([...r.suggestions].sort((a, b) => b.fit! - a.fit!).map((s) => s.track.id)).toEqual(r.suggestions.map((s) => s.track.id));
+  });
+
+  it('sjanger: bruker de mest relevante spillelistene og fletter dem', async () => {
+    const log: string[] = [];
+    const r = await discoverForSet(set, set, { mode: 'genre', genre: 'trance', deps: genreDeps(log) });
+    // Spillelister med «trance» i navnet først
+    expect(log.filter((p) => p.startsWith('/playlist/')).map((p) => p.split('/')[2])).toEqual(['901', '902', '900']);
+    const titles = r.suggestions.map((s) => s.track.title);
+    expect(titles).toEqual(expect.arrayContaining(['Out of the Blue', 'Seven Cities']));
+    expect(titles).not.toContain('Saltwater');
+    expect(r.suggestions.find((s) => s.track.title === 'Out of the Blue')!.track).toMatchObject({ reason: 'in “Trance Classics”', preview: 'p111' });
+    expect(r.notes.join()).toMatch(/1 track had no BPM or key online/);
+    // En annen versjon av en låt du har, foreslås ikke
+    const other = await discoverForSet(set, [...set, t({ artist: 'System F', title: 'Out of the Blue', version: 'Original Mix' })], { mode: 'genre', genre: 'trance', deps: genreDeps() });
+    expect(other.suggestions.map((s) => s.track.title)).not.toContain('Out of the Blue');
+  });
+
+  it('tomt set: viser alle funn uten passform; ingen spillelister gir beskjed', async () => {
+    const r = await discoverForSet([], [], { mode: 'genre', genre: 'trance', deps: genreDeps() });
+    expect(r.suggestions.length).toBe(5);
+    expect(r.suggestions.every((s) => s.fit === null)).toBe(true);
+    const none = await discoverForSet([], [], { mode: 'genre', genre: 'polka', deps: { ...genreDeps(), deezer: async <T,>() => ({ data: [] }) as T } });
+    expect(none.notes.join()).toMatch(/No playlists found for “polka”/);
   });
 });

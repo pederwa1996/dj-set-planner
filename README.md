@@ -71,6 +71,7 @@ Confident matches fill in empty fields automatically; your own values are never 
 
 **Building a set**
 1. **New set** — give it a name, a date and a **length** (30/45/60/90/120 min, your own, or no limit) and choose whole tracks or a fixed play time per track. The dialog shows roughly how many tracks that is. Then add tracks to its pool (from the library, or “Add to a set” from any Browse page).
+   - **Find on the web** (in **Add tracks**) suggests tracks you don’t have yet. **Similar artists** looks up artists like the ones in your set on Deezer and takes their popular tracks; **Same genre** uses popular Deezer playlists for a genre (e.g. “trance”, “melodic techno”). Each track gets BPM and key from GetSongBPM and a **fit** score — the average of its three best transitions with tracks in the set — and is sorted best fit first. Listen to a 30-second preview, tick the ones you like (or **Select best 10**) and add them: they go into the pool and into your library as “to get”, tagged `web find`. Tracks you already have, in any version, are left out.
    - The engine fills the set to that length with the tracks that flow best and keeps the rest of the pool in reserve. Before you build, and in the suggestions, you can see how many tracks fit — pick a longer set or **Use all tracks** if you want every one in. Your last choice is remembered for the next set.
    - **From a Spotify playlist:** export it at [exportify.net](https://exportify.net) and drag the CSV onto the **Sets** page (or click **From Exportify CSV**) — it becomes a new set named after the playlist. Inside a set, drag a CSV onto the page (or **Import CSV**) to add it. Choose “Let the engine order them” (into the pool) or “Keep playlist order”, and the set length. Tracks already in your library are reused, and BPM/key/energy from the file are kept.
 2. **Build order** — the engine returns three different options; pick one.
@@ -114,7 +115,7 @@ src/
   engine/          Mix engine (pure TypeScript, unit-tested)
   db/              Dexie/IndexedDB: schema, tracks, sets, backup
   importers/       Pasted lists and CSV (Exportify, TuneMyMusic, spreadsheets)
-  sources/         Online lookup adapters (GetSongBPM, Deezer, MusicBrainz) and web bridge search
+  sources/         Online lookup adapters (GetSongBPM, Deezer, MusicBrainz) and web search for bridges and set suggestions
   exporters/       Text, CSV and shop links for sets
   components/      Shared UI (buttons, dialogs, badges, Camelot wheel, track rows)
   lib/             Router, settings, hooks, normalisation

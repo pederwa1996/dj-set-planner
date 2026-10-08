@@ -595,6 +595,9 @@ export function SetEditor({ setId }: { setId: string }) {
         tracks={allTracks}
         already={new Set([...set.poolIds, ...inSet])}
         genres={values.genres}
+        setTracks={buildPool}
+        setName={set.name}
+        maxTempoPct={set.maxTempoPct}
         onAdd={(ids) => update((s) => ({ ...s, poolIds: Array.from(new Set([...s.poolIds, ...ids])) }), true)}
       />
       <AlternativesDialog

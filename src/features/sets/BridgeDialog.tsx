@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Globe, Loader2, Pause, Play, Plus, Sparkles } from 'lucide-react';
+import { Globe, Loader2, Plus, Sparkles } from 'lucide-react';
 import type { Track } from '../../db/types';
 import { addTrack } from '../../db/tracks';
 import { findBridges, idealBridge } from '../../engine/bridge';
-import { Button, EnergyBadge, IconButton, KeyBadge, Modal } from '../../components/ui';
-import { shopLinks } from '../../exporters/setExport';
+import { Button, EnergyBadge, KeyBadge, Modal } from '../../components/ui';
 import { discoverBridges, type DiscoverProgress, type WebSuggestion } from '../../sources/discover';
+import { usePreview, WebTrackRow } from './webParts';
 
 type Props = { open: boolean; onClose: () => void; from: Track | null; to: Track | null; library: Track[]; inSet: Set<string>; onInsert: (t: Track) => void; maxTempoPct: number };
 
@@ -27,36 +27,8 @@ function BridgeDialogInner({ open, onClose, from, to, library, inSet, onInsert, 
   const ctrl = useRef<AbortController | null>(null);
 
   // Forhåndslytting (30 s fra Deezer)
-  const audio = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState<string | null>(null);
-  useEffect(
-    () => () => {
-      ctrl.current?.abort();
-      audio.current?.pause();
-    },
-    [],
-  );
-  useEffect(() => {
-    if (!open) {
-      audio.current?.pause();
-      setPlaying(null);
-    }
-  }, [open]);
-
-  function togglePreview(id: string, url: string) {
-    if (!audio.current) {
-      audio.current = new Audio();
-      audio.current.addEventListener('ended', () => setPlaying(null));
-    }
-    if (playing === id) {
-      audio.current.pause();
-      setPlaying(null);
-      return;
-    }
-    audio.current.src = url;
-    void audio.current.play().catch(() => setPlaying(null));
-    setPlaying(id);
-  }
+  const preview = usePreview(open);
+  useEffect(() => () => ctrl.current?.abort(), []);
 
   async function searchWeb() {
     ctrl.current?.abort();
@@ -96,7 +68,7 @@ function BridgeDialogInner({ open, onClose, from, to, library, inSet, onInsert, 
       ) : (
         items.map((c) => (
           <div key={c.track.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-3 py-2 text-sm hover:bg-raised">
-            <span className="min-w-0 flex-1">
+            <span className="min-w-0 flex-1 basis-full sm:basis-0">
               {c.track.artist} – {c.track.title}
               {c.track.version && <span className="text-muted"> · {c.track.version}</span>}
             </span>
@@ -183,48 +155,33 @@ function BridgeDialogInner({ open, onClose, from, to, library, inSet, onInsert, 
               {web.results.map((s) => {
                 const t = s.track;
                 const state = added[t.id];
-                const links = shopLinks(t).filter((l) => l.name === 'Beatport' || l.name === 'Spotify');
                 return (
-                  <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-2 py-2 text-sm hover:bg-raised/60">
-                    {t.preview ? (
-                      <IconButton label={playing === t.id ? 'Pause preview' : 'Play 30-second preview'} active={playing === t.id} onClick={() => togglePreview(t.id, t.preview!)}>
-                        {playing === t.id ? <Pause size={16} /> : <Play size={16} />}
-                      </IconButton>
-                    ) : (
-                      <span className="w-10" />
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate">
-                        {t.artist} – {t.title}
-                        {t.version && <span className="text-muted"> · {t.version}</span>}
-                      </span>
-                      <span className="flex flex-wrap gap-x-2 text-xs text-muted">
-                        <span>{t.reason}</span>
-                        {links.map((l) => (
-                          <a key={l.name} href={l.url} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
-                            {l.name}
-                          </a>
-                        ))}
-                      </span>
-                    </span>
-                    <span className="tabular-nums text-ink2">{t.bpm ? Math.round(t.bpm) : '–'}</span>
-                    <KeyBadge camelot={t.camelot} showMusical={false} link={false} />
-                    <span className="w-24 text-right text-xs text-muted">
-                      in {s.into} · out {s.out}
-                    </span>
-                    {state ? (
-                      <span className="w-28 text-right text-xs text-muted">{state === 'inserted' ? 'Inserted · to get' : 'Saved · to get'}</span>
-                    ) : (
-                      <span className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => void saveWebTrack(s, false)} title="Save to your library as “to get”">
-                          <Plus size={14} /> To get
-                        </Button>
-                        <Button size="sm" variant="primary" onClick={() => void saveWebTrack(s, true)}>
-                          Insert
-                        </Button>
-                      </span>
-                    )}
-                  </li>
+                  <WebTrackRow
+                    key={t.id}
+                    track={t}
+                    preview={preview}
+                    side={
+                      <>
+                        <span className="tabular-nums text-ink2">{t.bpm ? Math.round(t.bpm) : '–'}</span>
+                        <KeyBadge camelot={t.camelot} showMusical={false} link={false} />
+                        <span className="text-right text-xs text-muted sm:w-24">
+                          in {s.into} · out {s.out}
+                        </span>
+                        {state ? (
+                          <span className="ml-auto w-28 text-right text-xs text-muted">{state === 'inserted' ? 'Inserted · to get' : 'Saved · to get'}</span>
+                        ) : (
+                          <span className="ml-auto flex gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => void saveWebTrack(s, false)} title="Save to your library as “to get”">
+                              <Plus size={14} /> To get
+                            </Button>
+                            <Button size="sm" variant="primary" onClick={() => void saveWebTrack(s, true)}>
+                              Insert
+                            </Button>
+                          </span>
+                        )}
+                      </>
+                    }
+                  />
                 );
               })}
             </ul>
