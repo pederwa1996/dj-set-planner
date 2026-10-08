@@ -13,7 +13,8 @@ const limit = rateLimiter(150);
 
 type Obj = Record<string, unknown>;
 
-async function get<T>(path: string): Promise<T> {
+/** GET mot Deezer-API-et (proxy først, JSONP som reserve) */
+export async function deezerGet<T>(path: string): Promise<T> {
   await limit();
   let data: T;
   try {
@@ -49,18 +50,18 @@ export const deezerAdapter: SourceAdapter = {
   id: 'deezer',
   async search(q) {
     const strict = `artist:"${q.artist}" track:"${q.title}"`;
-    let res = await get<{ data?: Obj[] }>(`/search?limit=10&q=${encodeURIComponent(strict)}`);
-    if (!res.data?.length) res = await get<{ data?: Obj[] }>(`/search?limit=10&q=${encodeURIComponent(`${q.artist} ${q.title}`)}`);
+    let res = await deezerGet<{ data?: Obj[] }>(`/search?limit=10&q=${encodeURIComponent(strict)}`);
+    if (!res.data?.length) res = await deezerGet<{ data?: Obj[] }>(`/search?limit=10&q=${encodeURIComponent(`${q.artist} ${q.title}`)}`);
     const cands = (res.data ?? []).map((t) => parseDeezerTrack(t, q)).sort((a, b) => b.confidence - a.confidence);
     const best = cands[0];
     if (best && best.confidence >= 0.6) {
       // Detaljer: BPM og dato ligger på track, label og sjanger på album
-      const full = await get<Obj>(`/track/${best.sourceId}`);
+      const full = await deezerGet<Obj>(`/track/${best.sourceId}`);
       const merged = { ...parseDeezerTrack(full, q), confidence: best.confidence };
       const albumId = (full.album as Obj | undefined)?.id;
       if (albumId) {
         try {
-          const album = await get<Obj>(`/album/${albumId}`);
+          const album = await deezerGet<Obj>(`/album/${albumId}`);
           merged.label = album.label ? String(album.label) : null;
           const g = ((album.genres as Obj | undefined)?.data as Obj[] | undefined)?.[0];
           merged.genre = g?.name ? String(g.name) : null;

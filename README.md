@@ -75,6 +75,8 @@ Confident matches fill in empty fields automatically; your own values are never 
 2. **Build order** — the engine returns three different options; pick one.
 3. Fine-tune: drag rows (desktop) or use ↑/↓, lock tracks to their position, rebuild around them. **Ctrl+Z** undoes.
 4. Every transition gets a score, an icon and an explanation, e.g. “8A → 9A: +1 on the wheel · +2 BPM (1.6%) · energy 6 → 7 — perfect”. Weak ones offer **Find bridge track**.
+   - It first suggests tracks from your library (owned, then to-get).
+   - **Search the web** looks outside your library: artists similar to the two tracks (Deezer), their popular tracks, BPM and key from GetSongBPM, ranked the same way. Play a 30-second preview, open it on Beatport/Spotify, then **Insert** it into the set or save it with **To get** (both add it to your library as “to get”, tagged `web find`). Keys need a GetSongBPM key in Settings.
 5. **Export:** shopping list with Beatport/Bandcamp/Traxsource/YouTube/Spotify links, a list for Spotify (via TuneMyMusic/Soundiiz), CSV, and a printable cheat sheet.
 
 ## Keyboard shortcuts
@@ -111,7 +113,7 @@ src/
   engine/          Mix engine (pure TypeScript, unit-tested)
   db/              Dexie/IndexedDB: schema, tracks, sets, backup
   importers/       Pasted lists and CSV (Exportify, TuneMyMusic, spreadsheets)
-  sources/         Online lookup adapters: GetSongBPM, Deezer, MusicBrainz
+  sources/         Online lookup adapters (GetSongBPM, Deezer, MusicBrainz) and web bridge search
   exporters/       Text, CSV and shop links for sets
   components/      Shared UI (buttons, dialogs, badges, Camelot wheel, track rows)
   lib/             Router, settings, hooks, normalisation

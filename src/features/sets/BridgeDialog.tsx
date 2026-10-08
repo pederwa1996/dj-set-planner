@@ -1,14 +1,92 @@
-import { Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Globe, Loader2, Pause, Play, Plus, Sparkles } from 'lucide-react';
 import type { Track } from '../../db/types';
+import { addTrack } from '../../db/tracks';
 import { findBridges, idealBridge } from '../../engine/bridge';
-import { Button, EnergyBadge, KeyBadge, Modal } from '../../components/ui';
+import { Button, EnergyBadge, IconButton, KeyBadge, Modal } from '../../components/ui';
+import { shopLinks } from '../../exporters/setExport';
+import { discoverBridges, type DiscoverProgress, type WebSuggestion } from '../../sources/discover';
 
-export function BridgeDialog({ open, onClose, from, to, library, inSet, onInsert, maxTempoPct }: { open: boolean; onClose: () => void; from: Track | null; to: Track | null; library: Track[]; inSet: Set<string>; onInsert: (t: Track) => void; maxTempoPct: number }) {
-  if (!from || !to) return null;
+type Props = { open: boolean; onClose: () => void; from: Track | null; to: Track | null; library: Track[]; inSet: Set<string>; onInsert: (t: Track) => void; maxTempoPct: number };
+
+export function BridgeDialog(props: Props) {
+  if (!props.from || !props.to) return null;
+  // Ny tilstand (og nytt nettsøk) for hver overgang
+  return <BridgeDialogInner key={`${props.from.id}>${props.to.id}`} {...props} from={props.from} to={props.to} />;
+}
+
+function BridgeDialogInner({ open, onClose, from, to, library, inSet, onInsert, maxTempoPct }: Props & { from: Track; to: Track }) {
   const ideal = idealBridge(from, to);
   const all = findBridges(from, to, library, { exclude: inSet, limit: 30, maxTempoPct });
   const owned = all.filter((c) => c.track.status === 'owned').slice(0, 8);
   const wish = all.filter((c) => c.track.status === 'wishlist').slice(0, 8);
+
+  // Nettsøk
+  const [web, setWeb] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress?: DiscoverProgress; results: WebSuggestion[]; notes: string[]; error?: string }>({ status: 'idle', results: [], notes: [] });
+  const [added, setAdded] = useState<Record<string, 'library' | 'inserted'>>({});
+  const ctrl = useRef<AbortController | null>(null);
+
+  // Forhåndslytting (30 s fra Deezer)
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState<string | null>(null);
+  useEffect(
+    () => () => {
+      ctrl.current?.abort();
+      audio.current?.pause();
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!open) {
+      audio.current?.pause();
+      setPlaying(null);
+    }
+  }, [open]);
+
+  function togglePreview(id: string, url: string) {
+    if (!audio.current) {
+      audio.current = new Audio();
+      audio.current.addEventListener('ended', () => setPlaying(null));
+    }
+    if (playing === id) {
+      audio.current.pause();
+      setPlaying(null);
+      return;
+    }
+    audio.current.src = url;
+    void audio.current.play().catch(() => setPlaying(null));
+    setPlaying(id);
+  }
+
+  async function searchWeb() {
+    ctrl.current?.abort();
+    ctrl.current = new AbortController();
+    setWeb({ status: 'running', results: [], notes: [] });
+    try {
+      const r = await discoverBridges(from, to, library, { signal: ctrl.current.signal, maxTempoPct, onProgress: (progress) => setWeb((w) => ({ ...w, progress })) });
+      setWeb({ status: 'done', results: r.suggestions, notes: r.notes });
+    } catch (e) {
+      setWeb({ status: 'error', results: [], notes: [], error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  async function saveWebTrack(s: WebSuggestion, insert: boolean) {
+    const t = s.track;
+    const created = await addTrack({
+      artist: t.artist,
+      title: t.title,
+      version: t.version,
+      bpm: t.bpm,
+      camelot: t.camelot,
+      durationSec: t.durationSec,
+      status: 'wishlist',
+      tags: ['web find'],
+      notes: `Found as a bridge between “${from.title}” and “${to.title}” (${t.reason}).`,
+      sources: { ...(t.bpm ? { bpm: 'online' as const } : {}), ...(t.camelot ? { camelot: 'online' as const } : {}) },
+    });
+    setAdded((a) => ({ ...a, [t.id]: insert ? 'inserted' : 'library' }));
+    if (insert) onInsert(created);
+  }
 
   const list = (title: string, items: typeof all) => (
     <section className="flex flex-col gap-1">
@@ -37,6 +115,14 @@ export function BridgeDialog({ open, onClose, from, to, library, inSet, onInsert
     </section>
   );
 
+  const p = web.progress;
+  const progressText =
+    !p || p.phase === 'artists'
+      ? `Finding artists similar to ${from.artist} and ${to.artist}…`
+      : p.phase === 'tracks'
+        ? `Collecting their popular tracks… ${p.checked}/${p.total} artists`
+        : `Checking BPM and key… ${p.checked}/${p.total} tracks`;
+
   return (
     <Modal open={open} onClose={onClose} wide title="Find a bridge track">
       <div className="flex flex-col gap-5">
@@ -51,7 +137,101 @@ export function BridgeDialog({ open, onClose, from, to, library, inSet, onInsert
         </p>
         {list('From your library (owned)', owned)}
         {list('From your to-get list', wish)}
-        <p className="text-xs text-muted">The score is the weaker of the two new transitions. Tracks already in the set are left out.</p>
+
+        {/* Fra nettet */}
+        <section className="flex flex-col gap-2 rounded-2xl border border-line bg-sidebar/60 p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <h3 className="flex items-center gap-2 text-sm font-medium">
+                <Globe size={16} className="text-accent" /> From the web
+              </h3>
+              <p className="text-[13px] text-muted">Tracks by artists similar to these two (Deezer), checked for BPM and key (GetSongBPM) and ranked the same way.</p>
+            </div>
+            {web.status === 'running' ? (
+              <Button size="sm" variant="ghost" onClick={() => ctrl.current?.abort()}>
+                Stop
+              </Button>
+            ) : (
+              <Button size="sm" variant={web.status === 'idle' ? 'primary' : 'secondary'} onClick={searchWeb}>
+                <Globe size={14} /> {web.status === 'idle' ? 'Search the web' : 'Search again'}
+              </Button>
+            )}
+          </div>
+
+          {web.status === 'running' && (
+            <div className="flex flex-col gap-1.5 py-1">
+              <span className="flex items-center gap-2 text-[13px] text-ink2">
+                <Loader2 size={14} className="animate-spin" /> {progressText}
+              </span>
+              {p && p.total > 0 && (
+                <span className="h-1 overflow-hidden rounded-full bg-line">
+                  <span className="block h-1 rounded-full bg-accent transition-all" style={{ width: `${Math.round((p.checked / p.total) * 100)}%` }} />
+                </span>
+              )}
+            </div>
+          )}
+          {web.status === 'error' && <p className="text-[13px] text-[#f07a7a]">Search failed: {web.error}</p>}
+          {web.status === 'done' && !web.results.length && <p className="text-sm text-muted">Nothing found that fits this transition. Try “Search again” later, or look manually using the ideal bridge above.</p>}
+          {web.notes.map((n) => (
+            <p key={n} className="text-[13px] text-ok">
+              {n}
+            </p>
+          ))}
+
+          {web.results.length > 0 && (
+            <ul className="flex flex-col">
+              {web.results.map((s) => {
+                const t = s.track;
+                const state = added[t.id];
+                const links = shopLinks(t).filter((l) => l.name === 'Beatport' || l.name === 'Spotify');
+                return (
+                  <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-2 py-2 text-sm hover:bg-raised/60">
+                    {t.preview ? (
+                      <IconButton label={playing === t.id ? 'Pause preview' : 'Play 30-second preview'} active={playing === t.id} onClick={() => togglePreview(t.id, t.preview!)}>
+                        {playing === t.id ? <Pause size={16} /> : <Play size={16} />}
+                      </IconButton>
+                    ) : (
+                      <span className="w-10" />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">
+                        {t.artist} – {t.title}
+                        {t.version && <span className="text-muted"> · {t.version}</span>}
+                      </span>
+                      <span className="flex flex-wrap gap-x-2 text-xs text-muted">
+                        <span>{t.reason}</span>
+                        {links.map((l) => (
+                          <a key={l.name} href={l.url} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
+                            {l.name}
+                          </a>
+                        ))}
+                      </span>
+                    </span>
+                    <span className="tabular-nums text-ink2">{t.bpm ? Math.round(t.bpm) : '–'}</span>
+                    <KeyBadge camelot={t.camelot} showMusical={false} link={false} />
+                    <span className="w-24 text-right text-xs text-muted">
+                      in {s.into} · out {s.out}
+                    </span>
+                    {state ? (
+                      <span className="w-28 text-right text-xs text-muted">{state === 'inserted' ? 'Inserted · to get' : 'Saved · to get'}</span>
+                    ) : (
+                      <span className="flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => void saveWebTrack(s, false)} title="Save to your library as “to get”">
+                          <Plus size={14} /> To get
+                        </Button>
+                        <Button size="sm" variant="primary" onClick={() => void saveWebTrack(s, true)}>
+                          Insert
+                        </Button>
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        <p className="text-xs text-muted">The score is the weaker of the two new transitions. Tracks already in the set are left out. Web finds have no energy level yet — set it once you’ve listened.</p>
       </div>
     </Modal>
   );
