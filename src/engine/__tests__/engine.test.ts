@@ -210,3 +210,25 @@ describe('bytte ut en låt', () => {
     expect(idealReplacement(null, null, null).description).toBe('not enough data to suggest');
   });
 });
+
+describe('key fra Spotify (Exportify)', () => {
+  it('gjør om Spotify sin key/mode riktig til Camelot', async () => {
+    const { spotifyKeyToCamelot } = await import('../../importers/csvImport');
+    // key = toneklasse (C = 0), mode 1 = dur, 0 = moll
+    expect(spotifyKeyToCamelot('9', '0')).toBe('8A'); // A-moll
+    expect(spotifyKeyToCamelot('0', '1')).toBe('8B'); // C-dur
+    expect(spotifyKeyToCamelot('6', '0')).toBe('11A'); // F#-moll
+    expect(spotifyKeyToCamelot('8', '0')).toBe('1A'); // G#/Ab-moll
+    expect(spotifyKeyToCamelot('11', '1')).toBe('1B'); // B-dur
+    expect(spotifyKeyToCamelot('1', '1')).toBe('3B'); // Db-dur
+    expect(spotifyKeyToCamelot('-1', '1')).toBeNull(); // Spotify fant ingen key
+  });
+
+  it('foreslår de vanligste forvekslingene', async () => {
+    const { likelyMisreads } = await import('../camelot');
+    expect(likelyMisreads('8A')).toEqual(['8B', '7A', '9A']);
+    expect(likelyMisreads('1B')).toEqual(['1A', '12B', '2B']);
+    expect(likelyMisreads('12A')).toEqual(['12B', '11A', '1A']);
+    expect(likelyMisreads(null)).toEqual([]);
+  });
+});

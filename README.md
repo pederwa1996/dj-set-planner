@@ -67,6 +67,8 @@ Imported tracks are marked **To get** — that becomes your shopping list. Mark 
 
 Confident matches fill in empty fields automatically; your own values are never overwritten. Uncertain matches (another remix, BPM disagreement, half/double time) are flagged **check**. Calls go through `/api/...` on the same domain (proxy in `render.yaml` and `vite.config.ts`) to avoid CORS issues.
 
+**Checking keys** — keys from an Exportify file are Spotify’s automatic analysis, and it often gets electronic music slightly wrong: major/minor mixed up (8A ↔ 8B) or one step off on the wheel (8A ↔ 7A/9A). Each set shows **Keys checked x / y**; **Check keys** lists the unchecked tracks with a Beatport link and one-tap buttons for “is right” and the likely alternatives (or any other key). Keys you confirm or correct are marked as checked and are never overwritten by imports or lookups. The track editor also shows where a key came from.
+
 **Browse** — explore by key (clickable Camelot wheel), genre, tempo range, energy, tags, mood and decade. Click any key badge anywhere in the app to see every track in that key and the keys that mix well with it (±1, relative, diagonal, energy boosts).
 
 **Building a set**

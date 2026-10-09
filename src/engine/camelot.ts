@@ -185,3 +185,18 @@ export function camelotSortValue(camelot: string | null | undefined): number {
   const k = camelot ? parseCamelot(camelot) : null;
   return k ? k.num * 2 + (k.letter === 'B' ? 1 : 0) : Number.POSITIVE_INFINITY;
 }
+
+/**
+ * Keys en automatisk analyse oftest forveksler med denne: dur/moll-paret
+ * (samme tall, A↔B) og nabotrinnene (en kvint opp/ned, ±1 på hjulet).
+ */
+export function likelyMisreads(camelot: string | null | undefined): string[] {
+  const k = camelot ? parseCamelot(camelot) : null;
+  if (!k) return [];
+  const wrap = (n: number) => ((((n - 1) % 12) + 12) % 12) + 1;
+  return [
+    formatCamelot({ num: k.num, letter: k.letter === 'A' ? 'B' : 'A' }),
+    formatCamelot({ num: wrap(k.num - 1), letter: k.letter }),
+    formatCamelot({ num: wrap(k.num + 1), letter: k.letter }),
+  ];
+}

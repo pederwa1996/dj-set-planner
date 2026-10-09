@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check, Download, Trash2 } from 'lucide-react';
 import type { Track } from '../../db/types';
+import { keyChecked, keySourceLabel } from '../../lib/keySource';
 import { addTrack, deleteTracks, emptyTrack, updateTrack } from '../../db/tracks';
 import { Button, EnergyPicker, Field, KeyInput, Modal, NumberInput, Segmented, Stars, SuggestInput, TagInput } from '../../components/ui';
 import { formatDuration, parseDuration } from '../../lib/normalize';
@@ -192,7 +193,25 @@ export function TrackEditor({
         <Field label="BPM" className="sm:col-span-2" hint={d.analysis?.bpm ? `Analysis suggests ${d.analysis.bpm}` : undefined}>
           <NumberInput value={d.bpm} step="0.01" placeholder="128.00" onChange={(v) => setD((p) => ({ ...p, bpm: v, sources: { ...p.sources, bpm: 'manual' } }))} />
         </Field>
-        <Field label="Key — Camelot or musical notation" className="sm:col-span-4" group>
+        <Field
+          label="Key — Camelot or musical notation"
+          className="sm:col-span-4"
+          group
+          hint={
+            d.camelot ? (
+              keyChecked(d) ? (
+                <span className="text-[#5fd35f]">✓ {keySourceLabel(d)}</span>
+              ) : (
+                <>
+                  {keySourceLabel(d)} — not checked yet.{' '}
+                  <button type="button" className="text-accent hover:underline" onClick={() => setD((p) => ({ ...p, sources: { ...p.sources, camelot: 'manual' } }))}>
+                    It’s right
+                  </button>
+                </>
+              )
+            ) : undefined
+          }
+        >
           <KeyInput value={d.camelot} onChange={(v) => setD((p) => ({ ...p, camelot: v, sources: { ...p.sources, camelot: 'manual' } }))} />
         </Field>
 

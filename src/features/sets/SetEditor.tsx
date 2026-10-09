@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowDown, ArrowLeftRight, ArrowUp, CalendarDays, CheckCheck, ChevronRight, Download, FileSpreadsheet, GripVertical, Lock, LockOpen, MapPin, Plus, Redo2, Search, Settings2, Share, Sparkles, Undo2, Wand2, X } from 'lucide-react';
+import { ArrowDown, ArrowLeftRight, ArrowUp, CalendarDays, KeyRound, CheckCheck, ChevronRight, Download, FileSpreadsheet, GripVertical, Lock, LockOpen, MapPin, Plus, Redo2, Search, Settings2, Share, Sparkles, Undo2, Wand2, X } from 'lucide-react';
 import { db } from '../../db/db';
 import type { DjSet, SetSlot, Track } from '../../db/types';
 import { markSetPlayed, pairKey, playSecFor, saveSet } from '../../db/sets';
@@ -18,6 +18,8 @@ import { collectValues } from '../library/filter';
 import { AlternativesDialog } from './AlternativesDialog';
 import { BridgeDialog } from './BridgeDialog';
 import { SwapDialog } from './SwapDialog';
+import { KeyCheckDialog } from './KeyCheckDialog';
+import { keyChecked } from '../../lib/keySource';
 import { CurveEditor } from './CurveEditor';
 import { ExportDialog } from './ExportDialog';
 import { GRADE_STYLE } from './grade';
@@ -56,6 +58,7 @@ export function SetEditor({ setId }: { setId: string }) {
   const [exportOpen, setExportOpen] = useState(false);
   const [bridgeAt, setBridgeAt] = useState<number | null>(null);
   const [swapAt, setSwapAt] = useState<number | null>(null);
+  const [keyCheckOpen, setKeyCheckOpen] = useState(false);
   const [energyFor, setEnergyFor] = useState<Track | null>(null);
   const [showSettings, setShowSettings] = useLocalStorage('set.showSettings.v2', false);
   const [noteOpen, setNoteOpen] = useState<string | null>(null);
@@ -168,6 +171,7 @@ export function SetEditor({ setId }: { setId: string }) {
   const poolTracks = set.poolIds.map((id) => byId.get(id)).filter((t): t is Track => !!t);
   const targetSec = set.targetMinutes ? set.targetMinutes * 60 : null;
   const toGet = slotTracks.filter((t) => t.status === 'wishlist').length;
+  const keysUnchecked = slotTracks.filter((t) => !keyChecked(t)).length;
   const firstIndexByDup = new Map<string, number>();
   const dupWarnings = new Map<number, string>();
   slotTracks.forEach((t, i) => {
@@ -287,6 +291,14 @@ export function SetEditor({ setId }: { setId: string }) {
           {targetSec ? <span className="text-sm text-muted"> / {formatDuration(targetSec)}</span> : null}
         </Stat>
         {analysis.transitions.length > 0 && <Stat label="Average flow">{analysis.avgScore}</Stat>}
+        {slotTracks.length > 0 && (
+          <button type="button" onClick={() => setKeyCheckOpen(true)} className="text-left" title="Confirm or correct the keys">
+            <Stat label="Keys checked" tone={keysUnchecked ? 'text-ok' : 'text-[#5fd35f]'}>
+              <KeyRound size={14} className="mr-1 inline" />
+              {slotTracks.length - keysUnchecked} / {slotTracks.length}
+            </Stat>
+          </button>
+        )}
         {analysis.gaps.length > 0 && (
           <Stat label="Gaps" tone="text-[#f07a7a]">
             ! {analysis.gaps.length}
@@ -403,6 +415,20 @@ export function SetEditor({ setId }: { setId: string }) {
                   </button>
                 </span>
               </EmptyState>
+            )}
+            {slotTracks.length > 0 && keysUnchecked > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-ok/30 bg-ok/5 px-4 py-3 text-[13px] text-ink2">
+                <KeyRound size={16} className="shrink-0 text-ok" />
+                <span className="min-w-0 flex-1 basis-56">
+                  <strong className="font-medium text-ink">
+                    {keysUnchecked} of {slotTracks.length} keys haven’t been checked.
+                  </strong>{' '}
+                  Imported keys are often a step off, and a wrong key means wrong transitions.
+                </span>
+                <Button size="sm" onClick={() => setKeyCheckOpen(true)}>
+                  Check keys
+                </Button>
+              </div>
             )}
             <ol className="flex flex-col">
               {slotTracks.map((t, i) => {
@@ -635,6 +661,7 @@ export function SetEditor({ setId }: { setId: string }) {
           setAltOpen(false);
         }}
       />
+      <KeyCheckDialog open={keyCheckOpen} onClose={() => setKeyCheckOpen(false)} tracks={slotTracks} />
       <SwapDialog
         open={swapAt != null}
         onClose={() => setSwapAt(null)}
